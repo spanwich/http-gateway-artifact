@@ -1,0 +1,13 @@
+/*
+ * B2-C2: Direct subtraction test with UINT16
+ * expected_body == msg_total - msg_header with guard msg_total >= msg_header
+ */
+entrypoint
+typedef struct _SubTest16
+{
+    UINT16 msg_total;
+    UINT16 msg_header;
+    UINT16 expected_body;
+    UINT8  _guard { msg_total >= msg_header };
+    UINT8  _check { expected_body == msg_total - msg_header };
+} SubTest16;

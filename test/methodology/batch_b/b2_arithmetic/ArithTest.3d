@@ -1,0 +1,73 @@
+/*
+ * B2: Arithmetic Expressions in EverParse 3D Constraints
+ *
+ * Tests whether +, -, * work in field constraints.
+ * Each variant is a separate entrypoint.
+ */
+
+/*
+ * Variant A: Multiplication
+ * Modbus-like: byte_count == quantity * 2
+ *
+ * Buffer: [quantity:u16le][byte_count:u8][_check:u8]  = 4 bytes
+ */
+entrypoint
+typedef struct _ArithMul
+{
+    UINT16 quantity;
+    UINT8  byte_count;
+    UINT8  _check { byte_count == quantity * 2 };
+} ArithMul;
+
+/*
+ * Variant B: Addition
+ * expected_sum == a + b
+ *
+ * Buffer: [a:u16le][b:u16le][expected_sum:u16le][_check:u8]  = 7 bytes
+ */
+entrypoint
+typedef struct _ArithAdd
+{
+    UINT16 a;
+    UINT16 b;
+    UINT16 expected_sum;
+    UINT8  _check { expected_sum == a + b };
+} ArithAdd;
+
+/*
+ * Variant C: Subtraction
+ * expected_body == total - header
+ *
+ * Buffer: [total:u16le][header:u16le][expected_body:u16le][_check:u8]  = 7 bytes
+ */
+entrypoint
+typedef struct _ArithSub
+{
+    UINT16 total;
+    UINT16 header;
+    UINT16 expected_body;
+    UINT8  _check { expected_body == total - header };
+} ArithSub;
+
+/*
+ * Variant D: Modbus-realistic combined check
+ * FC 3 (Read Holding Registers): byte_count == quantity * 2
+ * with quantity range and address overflow check
+ *
+ * Buffer: [fc:u8][start_address:u16le][quantity:u16le][byte_count:u8][_check:u8]  = 7 bytes
+ */
+entrypoint
+typedef struct _ModbusCheck
+{
+    UINT8  fc;
+    UINT16 start_address;
+    UINT16 quantity;
+    UINT8  byte_count;
+
+    UINT8  _check {
+        fc == 3 &&
+        byte_count == quantity * 2 &&
+        quantity >= 1 && quantity <= 125 &&
+        start_address + quantity <= 65535
+    };
+} ModbusCheck;

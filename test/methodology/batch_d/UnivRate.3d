@@ -1,0 +1,14 @@
+/* Universal Rate Constraint Validator.
+ *
+ * Checked once per request, independent of partition count.
+ * Buffer: 2 bytes (rate_count + phantom check byte).
+ */
+
+#define MAX_RATE 50
+
+entrypoint
+typedef struct _UnivRate
+{
+    UINT8 rate_count;
+    UINT8 _rate_ok { rate_count < MAX_RATE };
+} UnivRate;

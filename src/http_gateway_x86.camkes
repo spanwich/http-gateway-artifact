@@ -1,0 +1,412 @@
+/*
+ * http_gateway_x86.camkes -- 8-component XACML-aligned HTTP gateway (Phase 5+)
+ *
+ * Architecture:
+ *   E1000Driver <-> TlsValidator <-> LwipProxy <-> FStarExtractor <-> PolicyGate <-> ProtectedApp
+ *     (dom 0)        (dom 0)          (dom 0)        (dom 1)           (dom 1)        (dom 1)
+ *    [e1000 I/O]    [no-op]        [TLS term]     [PEP+PIP relay]   [PDP+PAP]      [resource]
+ *                                                    |          |
+ *                                               Authenticator  RateLimiter
+ *                                               (passive,dom1) (passive,dom1)
+ *                                               [IdP+PIP]      [rate counter]
+ *
+ *   Link 1: Ethernet frames (E1000Driver <-> TlsValidator)
+ *   Link 2: Ethernet frames (TlsValidator <-> LwipProxy)
+ *   Link 3: Raw HTTP bytes  (LwipProxy <-> FStarExtractor)
+ *   Link 4: SecurityParamsWire / GateResponse (FStarExtractor <-> PolicyGate)
+ *   Link 5: AppRequest / AppResponse (PolicyGate <-> ProtectedApp)
+ *   RPC:    AuthIPC (FStarExtractor -> Authenticator, seL4RPCCall)
+ *   RPC:    RateIPC (FStarExtractor -> RateLimiter, seL4RPCCall)
+ *
+ * Domain 0 (Data Path): E1000Driver, TlsValidator, LwipProxy
+ * Domain 1 (Control): FStarExtractor, Authenticator, RateLimiter, PolicyGate, ProtectedApp
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+import <std_connector.camkes>;
+
+/* ------------------------------------------------------------------ */
+/* Hardware components                                                 */
+/* ------------------------------------------------------------------ */
+
+component HWEthDriver {
+    hardware;
+    dataport Buf(0x20000) mmio;
+    emits IRQ irq;
+}
+
+component HWPCIConfig {
+    hardware;
+    provides IOPort pci_config;
+}
+
+/* ------------------------------------------------------------------ */
+/* RPC procedure definitions                                           */
+/* ------------------------------------------------------------------ */
+
+/*
+ * AuthIPC: FStarExtractor -> Authenticator RPC.
+ * Request/response data goes through shared auth_dp dataport.
+ * RPC carries the request length and returns the response length.
+ */
+procedure AuthIPC {
+    int login(in int cred_len);
+    int validate(in int token_len);
+};
+
+/*
+ * RateIPC: FStarExtractor -> RateLimiter RPC.
+ * Request/response data goes through shared rate_dp dataport.
+ * Subject ID written to rate_dp before RPC call.
+ * Rate count returned in rate_dp[0] after RPC returns.
+ */
+procedure RateIPC {
+    int lookup_and_increment(in int subject_id_len);
+    int reset_all();
+};
+
+/* ------------------------------------------------------------------ */
+/* Software components                                                 */
+/* ------------------------------------------------------------------ */
+
+component E1000Driver {
+    control;
+
+    /* HW interfaces */
+    dataport Buf(0x20000) eth_mmio;
+    consumes IRQ eth_irq;
+    uses IOPort pci_config;
+
+    /* Forward (wire RX -> TlsValidator) */
+    dataport Buf(8192) frame_out;
+    emits Notification frame_out_ready;
+
+    /* Reverse (TlsValidator -> wire TX) */
+    dataport Buf(8192) frame_in;
+    consumes Notification frame_in_ready;
+}
+
+component TlsValidator {
+    control;
+
+    /* From E1000Driver (forward) */
+    dataport Buf(8192) drv_in;
+    consumes Notification from_drv_ready;
+
+    /* To LwipProxy (forward) */
+    dataport Buf(8192) proxy_out;
+    emits Notification to_proxy_ready;
+
+    /* From LwipProxy (reverse) */
+    dataport Buf(8192) proxy_in;
+    consumes Notification from_proxy_ready;
+
+    /* To E1000Driver (reverse) */
+    dataport Buf(8192) drv_out;
+    emits Notification to_drv_ready;
+}
+
+component LwipProxy {
+    control;
+
+    /* From TlsValidator (forward -- Ethernet frames) */
+    dataport Buf(8192) tls_in;
+    consumes Notification from_tls_ready;
+
+    /* To FStarExtractor (forward -- raw HTTP bytes) */
+    dataport Buf(8192) http_out;
+    emits Notification to_http_ready;
+
+    /* From FStarExtractor (reverse -- raw HTTP response bytes) */
+    dataport Buf(8192) http_in;
+    consumes Notification from_http_ready;
+
+    /* To TlsValidator (reverse -- Ethernet frames) */
+    dataport Buf(8192) tls_out;
+    emits Notification to_tls_ready;
+}
+
+component FStarExtractor {
+    control;
+
+    /* From LwipProxy (forward -- raw HTTP bytes) */
+    dataport Buf(8192) proxy_in;
+    consumes Notification from_proxy_ready;
+
+    /* To LwipProxy (reverse -- raw HTTP response bytes) */
+    dataport Buf(8192) proxy_out;
+    emits Notification to_proxy_ready;
+
+    /* To PolicyGate (forward -- SecurityParamsWire) */
+    dataport Buf(8192) gate_out;
+    emits Notification to_gate_ready;
+
+    /* From PolicyGate (reverse -- GateResponse) */
+    dataport Buf(8192) gate_in;
+    consumes Notification from_gate_ready;
+
+    /* RPC to Authenticator */
+    uses AuthIPC auth;
+    dataport Buf(4096) auth_dp;
+
+    /* RPC to RateLimiter */
+    uses RateIPC rate;
+    dataport Buf(4096) rate_dp;
+}
+
+component Authenticator {
+    provides AuthIPC auth;
+    dataport Buf(4096) auth_dp;
+}
+
+component RateLimiter {
+    provides RateIPC rate;
+    dataport Buf(4096) rate_dp;
+}
+
+component PolicyGate {
+    control;
+
+    /* From FStarExtractor (forward -- SecurityParamsWire) */
+    dataport Buf(8192) ext_in;
+    consumes Notification from_ext_ready;
+
+    /* To FStarExtractor (reverse -- GateResponse) */
+    dataport Buf(8192) ext_out;
+    emits Notification to_ext_ready;
+
+    /* To ProtectedApp (forward -- AppRequest) */
+    dataport Buf(8192) app_out;
+    emits Notification to_app_ready;
+
+    /* From ProtectedApp (reverse -- AppResponse) */
+    dataport Buf(8192) app_in;
+    consumes Notification from_app_ready;
+}
+
+component ProtectedApp {
+    control;
+
+    /* From PolicyGate (forward -- AppRequest) */
+    dataport Buf(8192) gate_in;
+    consumes Notification from_gate_ready;
+
+    /* To PolicyGate (reverse -- AppResponse) */
+    dataport Buf(8192) gate_out;
+    emits Notification to_gate_ready;
+}
+
+/* ------------------------------------------------------------------ */
+/* Assembly                                                            */
+/* ------------------------------------------------------------------ */
+
+assembly {
+    composition {
+        /* HW components */
+        component HWEthDriver   eth_hardware;
+        component HWPCIConfig   pci_hardware;
+
+        /* Software components */
+        component E1000Driver    e1000_drv;
+        component TlsValidator   tls_val;
+        component LwipProxy      lwip_proxy;
+        component FStarExtractor fstar_ext;
+        component Authenticator  authenticator;
+        component RateLimiter    rate_limiter;
+        component PolicyGate     policy_gate;
+        component ProtectedApp   protected_app;
+
+        /* ---- HW connections ---- */
+        connection seL4HardwareMMIO eth_mmio_conn(
+            from e1000_drv.eth_mmio, to eth_hardware.mmio);
+        connection seL4HardwareInterrupt eth_irq_conn(
+            from eth_hardware.irq, to e1000_drv.eth_irq);
+        connection seL4HardwareIOPort pci_config_conn(
+            from e1000_drv.pci_config, to pci_hardware.pci_config);
+
+        /* ---- Link 1: E1000Driver <-> TlsValidator ---- */
+        connection seL4SharedData drv_tls_fwd_dp(
+            from e1000_drv.frame_out, to tls_val.drv_in);
+        connection seL4Notification drv_tls_fwd_ntfy(
+            from e1000_drv.frame_out_ready, to tls_val.from_drv_ready);
+        connection seL4SharedData drv_tls_rev_dp(
+            from tls_val.drv_out, to e1000_drv.frame_in);
+        connection seL4Notification drv_tls_rev_ntfy(
+            from tls_val.to_drv_ready, to e1000_drv.frame_in_ready);
+
+        /* ---- Link 2: TlsValidator <-> LwipProxy ---- */
+        connection seL4SharedData tls_proxy_fwd_dp(
+            from tls_val.proxy_out, to lwip_proxy.tls_in);
+        connection seL4Notification tls_proxy_fwd_ntfy(
+            from tls_val.to_proxy_ready, to lwip_proxy.from_tls_ready);
+        connection seL4SharedData tls_proxy_rev_dp(
+            from lwip_proxy.tls_out, to tls_val.proxy_in);
+        connection seL4Notification tls_proxy_rev_ntfy(
+            from lwip_proxy.to_tls_ready, to tls_val.from_proxy_ready);
+
+        /* ---- Link 3: LwipProxy <-> FStarExtractor (raw HTTP) ---- */
+        connection seL4SharedData proxy_fstar_fwd_dp(
+            from lwip_proxy.http_out, to fstar_ext.proxy_in);
+        connection seL4Notification proxy_fstar_fwd_ntfy(
+            from lwip_proxy.to_http_ready, to fstar_ext.from_proxy_ready);
+        connection seL4SharedData proxy_fstar_rev_dp(
+            from fstar_ext.proxy_out, to lwip_proxy.http_in);
+        connection seL4Notification proxy_fstar_rev_ntfy(
+            from fstar_ext.to_proxy_ready, to lwip_proxy.from_http_ready);
+
+        /* ---- Link 4: FStarExtractor <-> PolicyGate ---- */
+        connection seL4SharedData fstar_gate_fwd_dp(
+            from fstar_ext.gate_out, to policy_gate.ext_in);
+        connection seL4Notification fstar_gate_fwd_ntfy(
+            from fstar_ext.to_gate_ready, to policy_gate.from_ext_ready);
+        connection seL4SharedData fstar_gate_rev_dp(
+            from policy_gate.ext_out, to fstar_ext.gate_in);
+        connection seL4Notification fstar_gate_rev_ntfy(
+            from policy_gate.to_ext_ready, to fstar_ext.from_gate_ready);
+
+        /* ---- RPC + dataport: FStarExtractor -> Authenticator ---- */
+        connection seL4RPCCall auth_rpc(
+            from fstar_ext.auth, to authenticator.auth);
+        connection seL4SharedData auth_data(
+            from fstar_ext.auth_dp, to authenticator.auth_dp);
+
+        /* ---- RPC + dataport: FStarExtractor -> RateLimiter ---- */
+        connection seL4RPCCall rate_rpc(
+            from fstar_ext.rate, to rate_limiter.rate);
+        connection seL4SharedData rate_data(
+            from fstar_ext.rate_dp, to rate_limiter.rate_dp);
+
+        /* ---- Link 5: PolicyGate <-> ProtectedApp ---- */
+        connection seL4SharedData gate_app_fwd_dp(
+            from policy_gate.app_out, to protected_app.gate_in);
+        connection seL4Notification gate_app_fwd_ntfy(
+            from policy_gate.to_app_ready, to protected_app.from_gate_ready);
+        connection seL4SharedData gate_app_rev_dp(
+            from protected_app.gate_out, to policy_gate.app_in);
+        connection seL4Notification gate_app_rev_ntfy(
+            from protected_app.to_gate_ready, to policy_gate.from_app_ready);
+    }
+
+    configuration {
+        /* ---- HW config: Intel 82540EM NIC (QEMU -device e1000) ---- */
+        eth_hardware.mmio_paddr = 0xfeb80000;
+        eth_hardware.mmio_size = 0x20000;
+        eth_hardware.irq_irq_type = "pci";
+        eth_hardware.irq_irq_ioapic = 0;
+        eth_hardware.irq_irq_ioapic_pin = 11;
+        eth_hardware.irq_irq_vector = 11;
+
+        /* ---- PCI config space (0xCF8-0xCFF) ---- */
+        pci_hardware.pci_config_attributes = "0xCF8:0xCFF";
+
+        /* ---- Component priorities ---- */
+        e1000_drv.priority     = 150;
+        tls_val.priority       = 150;
+        lwip_proxy.priority    = 150;
+        fstar_ext.priority     = 150;
+        authenticator.priority  = 150;
+        rate_limiter.priority   = 150;
+        policy_gate.priority    = 150;
+        protected_app.priority  = 150;
+
+        /* ---- Heap sizes ---- */
+        e1000_drv.heap_size     = 0x100000;  /* 1 MB */
+        tls_val.heap_size       = 0x4000;    /* 16 KB */
+        lwip_proxy.heap_size    = 0x100000;  /* 1 MB */
+        fstar_ext.heap_size     = 0x20000;   /* 128 KB */
+        authenticator.heap_size  = 0x20000;   /* 128 KB */
+        rate_limiter.heap_size   = 0x10000;   /* 64 KB */
+        policy_gate.heap_size    = 0x40000;   /* 256 KB -- EverParse */
+        protected_app.heap_size  = 0x20000;   /* 128 KB */
+
+        /* ---- DMA pool (E1000Driver) ---- */
+        e1000_drv.dma_pool       = 0x200000;
+        e1000_drv.dma_pool_paddr = 0x4000000;
+        e1000_drv.simple_untyped21_pool = 4;
+        e1000_drv.cnode_size_bits = 18;
+
+        /* ---- Stack sizes ---- */
+        e1000_drv._stack_size     = 0x100000;
+        tls_val._stack_size       = 0x4000;
+        lwip_proxy._stack_size    = 0x10000;
+        fstar_ext._stack_size     = 0x10000;
+        authenticator._stack_size  = 0x10000;
+        rate_limiter._stack_size   = 0x10000;
+        policy_gate._stack_size    = 0x10000;
+        protected_app._stack_size  = 0x10000;
+
+        /* ---- Domain assignments ---- */
+        /* Domain 0: Data path */
+        e1000_drv._domain   = 0;
+        tls_val._domain     = 0;
+        lwip_proxy._domain  = 0;
+        /* Domain 1: Control */
+        fstar_ext._domain       = 1;
+        authenticator._domain    = 1;
+        rate_limiter._domain     = 1;
+        policy_gate._domain      = 1;
+        protected_app._domain    = 1;
+
+        /* ---- Interface thread domain assignments ---- */
+        /* CRITICAL: must match component's domain, or deadlocks occur.
+         * Interface threads default to domain 0 if not set. */
+
+        /* E1000Driver notification consumers (domain 0) */
+        e1000_drv.frame_in_ready_domain     = 0;
+        e1000_drv.eth_irq_domain            = 0;
+
+        /* TlsValidator notification consumers (domain 0) */
+        tls_val.from_drv_ready_domain       = 0;
+        tls_val.from_proxy_ready_domain     = 0;
+
+        /* LwipProxy notification consumers (domain 0) */
+        lwip_proxy.from_tls_ready_domain    = 0;
+        lwip_proxy.from_http_ready_domain   = 0;
+
+        /* FStarExtractor notification consumers (domain 1) */
+        fstar_ext.from_proxy_ready_domain   = 1;
+        fstar_ext.from_gate_ready_domain    = 1;
+
+        /* Authenticator RPC server thread (domain 1) */
+        authenticator.auth_domain           = 1;
+
+        /* RateLimiter RPC server thread (domain 1) */
+        rate_limiter.rate_domain            = 1;
+
+        /* PolicyGate notification consumers (domain 1) */
+        policy_gate.from_ext_ready_domain    = 1;
+        policy_gate.from_app_ready_domain    = 1;
+
+        /* ProtectedApp notification consumers (domain 1) */
+        protected_app.from_gate_ready_domain = 1;
+
+        /* ---- CPU affinity (single-core) ---- */
+        e1000_drv._affinity      = 0;
+        tls_val._affinity        = 0;
+        lwip_proxy._affinity     = 0;
+        fstar_ext._affinity      = 0;
+        authenticator._affinity   = 0;
+        rate_limiter._affinity    = 0;
+        policy_gate._affinity     = 0;
+        protected_app._affinity   = 0;
+
+        /* Interface thread affinities */
+        e1000_drv.frame_in_ready_affinity    = 0;
+        e1000_drv.eth_irq_affinity           = 0;
+        tls_val.from_drv_ready_affinity      = 0;
+        tls_val.from_proxy_ready_affinity    = 0;
+        lwip_proxy.from_tls_ready_affinity   = 0;
+        lwip_proxy.from_http_ready_affinity  = 0;
+        fstar_ext.from_proxy_ready_affinity  = 0;
+        fstar_ext.from_gate_ready_affinity   = 0;
+        authenticator.auth_affinity           = 0;
+        rate_limiter.rate_affinity            = 0;
+        policy_gate.from_ext_ready_affinity   = 0;
+        policy_gate.from_app_ready_affinity   = 0;
+        protected_app.from_gate_ready_affinity = 0;
+
+        /* MMIO must be uncached */
+        e1000_drv.eth_mmio_hardware_cached = false;
+    }
+}

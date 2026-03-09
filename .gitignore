@@ -1,0 +1,36 @@
+# Build artifacts
+*.o
+*.d
+
+# Test binaries
+test_scan
+test_method
+test_path
+test_header
+test_extractor
+test_ipc_extract
+pipeline_test
+test_rate_limiter
+test1
+test2
+test3
+rbac_test
+partition_test
+scale_func_test_*
+bit_test
+arith_test
+range_test
+
+# F* cache
+.cache/
+.extract/
+*.checked
+
+# Editor
+*~
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

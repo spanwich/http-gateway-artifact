@@ -1,0 +1,18 @@
+/*
+ * B1 Variant A: Full bitmask with shift (u32 literal)
+ * Check (allowed_mask & (1ul << fc)) != 0ul
+ * Guard: fc < 32 ensures shift is valid for u32
+ *
+ * Buffer: [allowed_mask:u32le][fc:u8][_guard:u8][_check:u8]  = 7 bytes
+ */
+
+#define FC_MAX 32
+
+entrypoint
+typedef struct _BitTestA
+{
+    UINT32 allowed_mask;
+    UINT8  fc;
+    UINT8  _guard { fc < FC_MAX };
+    UINT8  _check { (allowed_mask & (1ul << fc)) != 0ul };
+} BitTestA;

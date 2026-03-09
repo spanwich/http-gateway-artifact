@@ -1,0 +1,82 @@
+/*
+ * EverParse DNF Access Control - Experiment 2: Hybrid CNF+DNF
+ *
+ * Extends Experiment 1 with universal constraints (rate limiting, body size)
+ * that compose as conjunction with the DNF access rules.
+ *
+ * Three constrained check fields compose as conjunction:
+ *   _rate_ok   AND  _size_ok   AND  _access_ok
+ * All three must pass for the parse to succeed.
+ *
+ * Buffer layout (43 bytes, little-endian):
+ *   [0]      max_rate (u8)
+ *   [1..4]   max_body (u32)
+ *   [5..10]  Rule 0: path_hash(u32) method(u8) min_role(u8)
+ *   [11..16] Rule 1
+ *   [17..22] Rule 2
+ *   [23..28] Rule 3
+ *   [29..34] Request: path_hash(u32) method(u8) auth_state(u8)
+ *   [35]     req_rate_count (u8)
+ *   [36..39] req_content_length (u32)
+ *   [40]     _rate_ok byte
+ *   [41]     _size_ok byte
+ *   [42]     _access_ok byte
+ */
+
+entrypoint
+typedef struct _TestHybrid
+{
+    /* Universal policy parameters */
+    UINT8  max_rate;
+    UINT32 max_body;
+
+    /* Rule 0 */
+    UINT32 r0_path_hash;
+    UINT8  r0_method;
+    UINT8  r0_min_role;
+
+    /* Rule 1 */
+    UINT32 r1_path_hash;
+    UINT8  r1_method;
+    UINT8  r1_min_role;
+
+    /* Rule 2 */
+    UINT32 r2_path_hash;
+    UINT8  r2_method;
+    UINT8  r2_min_role;
+
+    /* Rule 3 */
+    UINT32 r3_path_hash;
+    UINT8  r3_method;
+    UINT8  r3_min_role;
+
+    /* Request */
+    UINT32 req_path_hash;
+    UINT8  req_method;
+    UINT8  req_auth_state;
+
+    /* Request metadata */
+    UINT8  req_rate_count;
+    UINT32 req_content_length;
+
+    /* CNF constraint: rate limit */
+    UINT8 _rate_ok
+    {
+        req_rate_count < max_rate
+    };
+
+    /* CNF constraint: body size */
+    UINT8 _size_ok
+    {
+        req_content_length <= max_body
+    };
+
+    /* DNF constraint: access rules (same as Experiment 1) */
+    UINT8 _access_ok
+    {
+        (r0_path_hash == req_path_hash && r0_method == req_method && req_auth_state >= r0_min_role) ||
+        (r1_path_hash == req_path_hash && r1_method == req_method && req_auth_state >= r1_min_role) ||
+        (r2_path_hash == req_path_hash && r2_method == req_method && req_auth_state >= r2_min_role) ||
+        (r3_path_hash == req_path_hash && r3_method == req_method && req_auth_state >= r3_min_role)
+    };
+} TestHybrid;

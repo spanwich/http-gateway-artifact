@@ -1,0 +1,32 @@
+/*
+ * B2-C: Subtraction test via addition rewrite
+ * Instead of: expected_body == total - header
+ * Use: total == expected_body + header (mathematically equivalent)
+ *
+ * Buffer: [total:u16le][header:u16le][expected_body:u16le][_guard:u8][_check:u8]  = 8 bytes
+ */
+entrypoint
+typedef struct _ArithSubViaAdd
+{
+    UINT16 total;
+    UINT16 header;
+    UINT16 expected_body;
+    UINT8  _guard { expected_body <= 30000 && header <= 30000 };
+    UINT8  _check { total == expected_body + header };
+} ArithSubViaAdd;
+
+/*
+ * B2-C2: Direct subtraction with UINT8
+ * expected == a - b with guard a >= b
+ *
+ * Buffer: [a:u8][b:u8][expected:u8][_guard:u8][_check:u8]  = 5 bytes
+ */
+entrypoint
+typedef struct _ArithSubU8
+{
+    UINT8 a;
+    UINT8 b;
+    UINT8 expected;
+    UINT8 _guard { a >= b };
+    UINT8 _check { expected == a - b };
+} ArithSubU8;

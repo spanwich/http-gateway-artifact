@@ -1,0 +1,121 @@
+/* Monolithic 16-Rule Validator (for equivalence comparison with Part-2).
+ *
+ * Identical structure to ScaleTest16: 16 rules + rate + access DNF.
+ * Buffer: 16*6 + 4 + 1 + 1 + 1 + 1 + 1 = 105 bytes.
+ */
+
+#define MAX_RATE 50
+
+entrypoint
+typedef struct _MonoAccess16
+{
+    /* Rule 0 */
+    UINT32 r0_path_hash;
+    UINT8  r0_method;
+    UINT8  r0_min_role;
+
+    /* Rule 1 */
+    UINT32 r1_path_hash;
+    UINT8  r1_method;
+    UINT8  r1_min_role;
+
+    /* Rule 2 */
+    UINT32 r2_path_hash;
+    UINT8  r2_method;
+    UINT8  r2_min_role;
+
+    /* Rule 3 */
+    UINT32 r3_path_hash;
+    UINT8  r3_method;
+    UINT8  r3_min_role;
+
+    /* Rule 4 */
+    UINT32 r4_path_hash;
+    UINT8  r4_method;
+    UINT8  r4_min_role;
+
+    /* Rule 5 */
+    UINT32 r5_path_hash;
+    UINT8  r5_method;
+    UINT8  r5_min_role;
+
+    /* Rule 6 */
+    UINT32 r6_path_hash;
+    UINT8  r6_method;
+    UINT8  r6_min_role;
+
+    /* Rule 7 */
+    UINT32 r7_path_hash;
+    UINT8  r7_method;
+    UINT8  r7_min_role;
+
+    /* Rule 8 */
+    UINT32 r8_path_hash;
+    UINT8  r8_method;
+    UINT8  r8_min_role;
+
+    /* Rule 9 */
+    UINT32 r9_path_hash;
+    UINT8  r9_method;
+    UINT8  r9_min_role;
+
+    /* Rule 10 */
+    UINT32 r10_path_hash;
+    UINT8  r10_method;
+    UINT8  r10_min_role;
+
+    /* Rule 11 */
+    UINT32 r11_path_hash;
+    UINT8  r11_method;
+    UINT8  r11_min_role;
+
+    /* Rule 12 */
+    UINT32 r12_path_hash;
+    UINT8  r12_method;
+    UINT8  r12_min_role;
+
+    /* Rule 13 */
+    UINT32 r13_path_hash;
+    UINT8  r13_method;
+    UINT8  r13_min_role;
+
+    /* Rule 14 */
+    UINT32 r14_path_hash;
+    UINT8  r14_method;
+    UINT8  r14_min_role;
+
+    /* Rule 15 */
+    UINT32 r15_path_hash;
+    UINT8  r15_method;
+    UINT8  r15_min_role;
+
+    /* Request */
+    UINT32 req_path_hash;
+    UINT8  req_method;
+    UINT8  auth_state;
+
+    /* Rate limit (CNF) */
+    UINT8  rate_count;
+    UINT8  _rate_ok { rate_count < MAX_RATE };
+
+    /* Access control (DNF) */
+    UINT8  _access_ok
+    {
+        (r0_path_hash == req_path_hash && r0_method == req_method && auth_state >= r0_min_role) ||
+        (r1_path_hash == req_path_hash && r1_method == req_method && auth_state >= r1_min_role) ||
+        (r2_path_hash == req_path_hash && r2_method == req_method && auth_state >= r2_min_role) ||
+        (r3_path_hash == req_path_hash && r3_method == req_method && auth_state >= r3_min_role) ||
+        (r4_path_hash == req_path_hash && r4_method == req_method && auth_state >= r4_min_role) ||
+        (r5_path_hash == req_path_hash && r5_method == req_method && auth_state >= r5_min_role) ||
+        (r6_path_hash == req_path_hash && r6_method == req_method && auth_state >= r6_min_role) ||
+        (r7_path_hash == req_path_hash && r7_method == req_method && auth_state >= r7_min_role) ||
+        (r8_path_hash == req_path_hash && r8_method == req_method && auth_state >= r8_min_role) ||
+        (r9_path_hash == req_path_hash && r9_method == req_method && auth_state >= r9_min_role) ||
+        (r10_path_hash == req_path_hash && r10_method == req_method && auth_state >= r10_min_role) ||
+        (r11_path_hash == req_path_hash && r11_method == req_method && auth_state >= r11_min_role) ||
+        (r12_path_hash == req_path_hash && r12_method == req_method && auth_state >= r12_min_role) ||
+        (r13_path_hash == req_path_hash && r13_method == req_method && auth_state >= r13_min_role) ||
+        (r14_path_hash == req_path_hash && r14_method == req_method && auth_state >= r14_min_role) ||
+        (r15_path_hash == req_path_hash && r15_method == req_method && auth_state >= r15_min_role)
+    };
+} MonoAccess16;

@@ -1,0 +1,13 @@
+/*
+ * B1 Variant B: Bitwise AND with pre-shifted bit
+ * Glue code computes fc_bit = 1 << fc, then checks (allowed_mask & fc_bit) != 0
+ *
+ * Buffer: [allowed_mask:u32le][fc_bit:u32le][_check:u8]  = 9 bytes
+ */
+entrypoint
+typedef struct _BitTestB
+{
+    UINT32 allowed_mask;
+    UINT32 fc_bit;
+    UINT8  _check { (allowed_mask & fc_bit) != 0 };
+} BitTestB;

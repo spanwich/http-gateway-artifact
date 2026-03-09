@@ -1,0 +1,18 @@
+/*
+ * B2-B: Addition in constraint (with overflow guard)
+ * expected_sum == a + b
+ * Guard: a + b <= 65535 — but we can't use + in the guard itself!
+ * Instead: a <= 32767 ensures a + b <= 32767 + 65535 which overflows.
+ * Better: use individual bounds: a <= 30000 && b <= 30000
+ *
+ * Buffer: [a:u16le][b:u16le][expected_sum:u16le][_guard:u8][_check:u8]  = 8 bytes
+ */
+entrypoint
+typedef struct _ArithAdd
+{
+    UINT16 a;
+    UINT16 b;
+    UINT16 expected_sum;
+    UINT8  _guard { a <= 30000 && b <= 30000 };
+    UINT8  _check { expected_sum == a + b };
+} ArithAdd;

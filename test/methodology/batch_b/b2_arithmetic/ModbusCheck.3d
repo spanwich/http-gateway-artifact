@@ -1,0 +1,30 @@
+/*
+ * B2-D: Modbus-realistic combined check (with overflow guards)
+ * FC 3 (Read Holding Registers): byte_count == quantity * 2
+ * quantity in [1..125] ensures quantity * 2 <= 250 (no overflow)
+ * start_address <= 65534 with quantity <= 125 ensures start_address + quantity <= 65535
+ *
+ * Buffer: [fc:u8][start_address:u16le][quantity:u16le][byte_count:u8]
+ *         [_bounds:u8][_check:u8]  = 8 bytes
+ */
+entrypoint
+typedef struct _ModbusCheck
+{
+    UINT8  fc;
+    UINT16 start_address;
+    UINT16 quantity;
+    UINT8  byte_count;
+
+    /* Bounds guard: ensures arithmetic is overflow-safe */
+    UINT8  _bounds {
+        quantity >= 1 && quantity <= 125 &&
+        start_address <= 65410
+    };
+
+    /* Semantic check: FC 3 protocol compliance */
+    UINT8  _check {
+        fc == 3 &&
+        byte_count == quantity * 2 &&
+        start_address + quantity <= 65535
+    };
+} ModbusCheck;

@@ -1,0 +1,28 @@
+/*
+ * B3: Parameterized Range Checks
+ *
+ * Tests whether policy parameters can define bounds for range checks.
+ * Combines dynamic policy pattern (Batch A) with arithmetic comparison.
+ *
+ * Buffer layout (10 bytes):
+ *   [allowed_min:2][allowed_max:2][max_rate:1]
+ *   [address:2][rate_count:1]
+ *   [_range_ok:1][_rate_ok:1]
+ */
+
+entrypoint
+typedef struct _RangeCheck
+{
+    /* Policy parameters (updatable data) */
+    UINT16 allowed_min;
+    UINT16 allowed_max;
+    UINT8  max_rate;
+
+    /* Request fields */
+    UINT16 address;
+    UINT8  rate_count;
+
+    /* Constraints */
+    UINT8 _range_ok { address >= allowed_min && address <= allowed_max };
+    UINT8 _rate_ok  { rate_count < max_rate };
+} RangeCheck;

@@ -1,0 +1,15 @@
+/*
+ * B2-C: Direct subtraction test with UINT8 (minimal)
+ * expected == a - b with guard a >= b
+ *
+ * Buffer: [a:u8][b:u8][expected:u8][_guard:u8][_check:u8]  = 5 bytes
+ */
+entrypoint
+typedef struct _SubTestU8
+{
+    UINT8 a;
+    UINT8 b;
+    UINT8 expected;
+    UINT8 _guard { a >= b };
+    UINT8 _check { expected == a - b };
+} SubTestU8;

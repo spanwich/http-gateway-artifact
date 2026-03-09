@@ -1,0 +1,55 @@
+/*
+ * EverParse DNF Access Control - Experiment 1
+ *
+ * Validates that EverParse can compile a large disjunctive constraint
+ * (4 access rules OR'd together). If the parse succeeds, the request
+ * is authorized; if it fails, the request is denied.
+ *
+ * DNF = deny by default: forgetting a rule denies access.
+ *
+ * Buffer layout (31 bytes, little-endian):
+ *   [0..5]   Rule 0: path_hash(u32) method(u8) min_role(u8)
+ *   [6..11]  Rule 1: path_hash(u32) method(u8) min_role(u8)
+ *   [12..17] Rule 2: path_hash(u32) method(u8) min_role(u8)
+ *   [18..23] Rule 3: path_hash(u32) method(u8) min_role(u8)
+ *   [24..29] Request: path_hash(u32) method(u8) auth_state(u8)
+ *   [30]     _check: constraint byte (value irrelevant)
+ */
+
+entrypoint
+typedef struct _TestAccess
+{
+    /* Rule 0 */
+    UINT32 r0_path_hash;
+    UINT8  r0_method;
+    UINT8  r0_min_role;
+
+    /* Rule 1 */
+    UINT32 r1_path_hash;
+    UINT8  r1_method;
+    UINT8  r1_min_role;
+
+    /* Rule 2 */
+    UINT32 r2_path_hash;
+    UINT8  r2_method;
+    UINT8  r2_min_role;
+
+    /* Rule 3 */
+    UINT32 r3_path_hash;
+    UINT8  r3_method;
+    UINT8  r3_min_role;
+
+    /* Request */
+    UINT32 req_path_hash;
+    UINT8  req_method;
+    UINT8  req_auth_state;
+
+    /* Access check: parse succeeds iff at least one rule matches */
+    UINT8 _check
+    {
+        (r0_path_hash == req_path_hash && r0_method == req_method && req_auth_state >= r0_min_role) ||
+        (r1_path_hash == req_path_hash && r1_method == req_method && req_auth_state >= r1_min_role) ||
+        (r2_path_hash == req_path_hash && r2_method == req_method && req_auth_state >= r2_min_role) ||
+        (r3_path_hash == req_path_hash && r3_method == req_method && req_auth_state >= r3_min_role)
+    };
+} TestAccess;

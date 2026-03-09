@@ -1,0 +1,214 @@
+/* EverParse Scale Test: 32 rules */
+
+#define MAX_RATE 50
+#define DEAD_HASH 0xDEADDEADul
+
+entrypoint
+typedef struct _ScaleTest32
+{
+    /* Rule 0 */
+    UINT32 r0_path_hash;
+    UINT8  r0_method;
+    UINT8  r0_min_role;
+
+    /* Rule 1 */
+    UINT32 r1_path_hash;
+    UINT8  r1_method;
+    UINT8  r1_min_role;
+
+    /* Rule 2 */
+    UINT32 r2_path_hash;
+    UINT8  r2_method;
+    UINT8  r2_min_role;
+
+    /* Rule 3 */
+    UINT32 r3_path_hash;
+    UINT8  r3_method;
+    UINT8  r3_min_role;
+
+    /* Rule 4 */
+    UINT32 r4_path_hash;
+    UINT8  r4_method;
+    UINT8  r4_min_role;
+
+    /* Rule 5 */
+    UINT32 r5_path_hash;
+    UINT8  r5_method;
+    UINT8  r5_min_role;
+
+    /* Rule 6 */
+    UINT32 r6_path_hash;
+    UINT8  r6_method;
+    UINT8  r6_min_role;
+
+    /* Rule 7 */
+    UINT32 r7_path_hash;
+    UINT8  r7_method;
+    UINT8  r7_min_role;
+
+    /* Rule 8 */
+    UINT32 r8_path_hash;
+    UINT8  r8_method;
+    UINT8  r8_min_role;
+
+    /* Rule 9 */
+    UINT32 r9_path_hash;
+    UINT8  r9_method;
+    UINT8  r9_min_role;
+
+    /* Rule 10 */
+    UINT32 r10_path_hash;
+    UINT8  r10_method;
+    UINT8  r10_min_role;
+
+    /* Rule 11 */
+    UINT32 r11_path_hash;
+    UINT8  r11_method;
+    UINT8  r11_min_role;
+
+    /* Rule 12 */
+    UINT32 r12_path_hash;
+    UINT8  r12_method;
+    UINT8  r12_min_role;
+
+    /* Rule 13 */
+    UINT32 r13_path_hash;
+    UINT8  r13_method;
+    UINT8  r13_min_role;
+
+    /* Rule 14 */
+    UINT32 r14_path_hash;
+    UINT8  r14_method;
+    UINT8  r14_min_role;
+
+    /* Rule 15 */
+    UINT32 r15_path_hash;
+    UINT8  r15_method;
+    UINT8  r15_min_role;
+
+    /* Rule 16 */
+    UINT32 r16_path_hash;
+    UINT8  r16_method;
+    UINT8  r16_min_role;
+
+    /* Rule 17 */
+    UINT32 r17_path_hash;
+    UINT8  r17_method;
+    UINT8  r17_min_role;
+
+    /* Rule 18 */
+    UINT32 r18_path_hash;
+    UINT8  r18_method;
+    UINT8  r18_min_role;
+
+    /* Rule 19 */
+    UINT32 r19_path_hash;
+    UINT8  r19_method;
+    UINT8  r19_min_role;
+
+    /* Rule 20 */
+    UINT32 r20_path_hash;
+    UINT8  r20_method;
+    UINT8  r20_min_role;
+
+    /* Rule 21 */
+    UINT32 r21_path_hash;
+    UINT8  r21_method;
+    UINT8  r21_min_role;
+
+    /* Rule 22 */
+    UINT32 r22_path_hash;
+    UINT8  r22_method;
+    UINT8  r22_min_role;
+
+    /* Rule 23 */
+    UINT32 r23_path_hash;
+    UINT8  r23_method;
+    UINT8  r23_min_role;
+
+    /* Rule 24 */
+    UINT32 r24_path_hash;
+    UINT8  r24_method;
+    UINT8  r24_min_role;
+
+    /* Rule 25 */
+    UINT32 r25_path_hash;
+    UINT8  r25_method;
+    UINT8  r25_min_role;
+
+    /* Rule 26 */
+    UINT32 r26_path_hash;
+    UINT8  r26_method;
+    UINT8  r26_min_role;
+
+    /* Rule 27 */
+    UINT32 r27_path_hash;
+    UINT8  r27_method;
+    UINT8  r27_min_role;
+
+    /* Rule 28 */
+    UINT32 r28_path_hash;
+    UINT8  r28_method;
+    UINT8  r28_min_role;
+
+    /* Rule 29 */
+    UINT32 r29_path_hash;
+    UINT8  r29_method;
+    UINT8  r29_min_role;
+
+    /* Rule 30 */
+    UINT32 r30_path_hash;
+    UINT8  r30_method;
+    UINT8  r30_min_role;
+
+    /* Rule 31 */
+    UINT32 r31_path_hash;
+    UINT8  r31_method;
+    UINT8  r31_min_role;
+
+    /* Request */
+    UINT32 req_path_hash;
+    UINT8  req_method;
+    UINT8  auth_state;
+
+    /* Rate limit (CNF) */
+    UINT8  rate_count;
+    UINT8  _rate_ok { rate_count < MAX_RATE };
+
+    /* Access control (DNF) */
+    UINT8  _access_ok
+    {
+        (r0_path_hash == req_path_hash && r0_method == req_method && auth_state >= r0_min_role) ||
+        (r1_path_hash == req_path_hash && r1_method == req_method && auth_state >= r1_min_role) ||
+        (r2_path_hash == req_path_hash && r2_method == req_method && auth_state >= r2_min_role) ||
+        (r3_path_hash == req_path_hash && r3_method == req_method && auth_state >= r3_min_role) ||
+        (r4_path_hash == req_path_hash && r4_method == req_method && auth_state >= r4_min_role) ||
+        (r5_path_hash == req_path_hash && r5_method == req_method && auth_state >= r5_min_role) ||
+        (r6_path_hash == req_path_hash && r6_method == req_method && auth_state >= r6_min_role) ||
+        (r7_path_hash == req_path_hash && r7_method == req_method && auth_state >= r7_min_role) ||
+        (r8_path_hash == req_path_hash && r8_method == req_method && auth_state >= r8_min_role) ||
+        (r9_path_hash == req_path_hash && r9_method == req_method && auth_state >= r9_min_role) ||
+        (r10_path_hash == req_path_hash && r10_method == req_method && auth_state >= r10_min_role) ||
+        (r11_path_hash == req_path_hash && r11_method == req_method && auth_state >= r11_min_role) ||
+        (r12_path_hash == req_path_hash && r12_method == req_method && auth_state >= r12_min_role) ||
+        (r13_path_hash == req_path_hash && r13_method == req_method && auth_state >= r13_min_role) ||
+        (r14_path_hash == req_path_hash && r14_method == req_method && auth_state >= r14_min_role) ||
+        (r15_path_hash == req_path_hash && r15_method == req_method && auth_state >= r15_min_role) ||
+        (r16_path_hash == req_path_hash && r16_method == req_method && auth_state >= r16_min_role) ||
+        (r17_path_hash == req_path_hash && r17_method == req_method && auth_state >= r17_min_role) ||
+        (r18_path_hash == req_path_hash && r18_method == req_method && auth_state >= r18_min_role) ||
+        (r19_path_hash == req_path_hash && r19_method == req_method && auth_state >= r19_min_role) ||
+        (r20_path_hash == req_path_hash && r20_method == req_method && auth_state >= r20_min_role) ||
+        (r21_path_hash == req_path_hash && r21_method == req_method && auth_state >= r21_min_role) ||
+        (r22_path_hash == req_path_hash && r22_method == req_method && auth_state >= r22_min_role) ||
+        (r23_path_hash == req_path_hash && r23_method == req_method && auth_state >= r23_min_role) ||
+        (r24_path_hash == req_path_hash && r24_method == req_method && auth_state >= r24_min_role) ||
+        (r25_path_hash == req_path_hash && r25_method == req_method && auth_state >= r25_min_role) ||
+        (r26_path_hash == req_path_hash && r26_method == req_method && auth_state >= r26_min_role) ||
+        (r27_path_hash == req_path_hash && r27_method == req_method && auth_state >= r27_min_role) ||
+        (r28_path_hash == req_path_hash && r28_method == req_method && auth_state >= r28_min_role) ||
+        (r29_path_hash == req_path_hash && r29_method == req_method && auth_state >= r29_min_role) ||
+        (r30_path_hash == req_path_hash && r30_method == req_method && auth_state >= r30_min_role) ||
+        (r31_path_hash == req_path_hash && r31_method == req_method && auth_state >= r31_min_role)
+    };
+} ScaleTest32;

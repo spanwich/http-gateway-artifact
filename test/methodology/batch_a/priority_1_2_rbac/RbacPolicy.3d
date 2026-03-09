@@ -1,0 +1,211 @@
+/*
+ * RBAC Policy System — EverParse 3D Specification
+ *
+ * Three validators:
+ *   1. LoginRequest   — POST /login (any auth state, rate limited)
+ *   2. PolicyBlob     — PUT /policy (admin only, format check)
+ *   3. AccessRequest  — General request (policy enforcement with RBAC)
+ *
+ * All three are entrypoints in a single file.
+ */
+
+/* Path hashes */
+#define PATH_LOGIN    0x11111111ul
+#define PATH_LOGOUT   0x22222222ul
+#define PATH_STATUS   0x33333333ul
+#define PATH_POLICY   0x44444444ul
+#define DEAD_HASH     0xDEADDEADul
+
+/* HTTP methods */
+#define METHOD_GET    1
+#define METHOD_POST   2
+#define METHOD_PUT    3
+
+/* Role levels */
+#define ROLE_NONE     0
+#define ROLE_OPERATOR 1
+#define ROLE_ADMIN    2
+
+/* Limits */
+#define MAX_RATE      50
+#define MAX_RULES     8
+
+/*
+ * Validator 1: LoginRequest
+ *
+ * Buffer layout:
+ *   [auth_state:1][rate_count:1][path_hash:4][method:1][_check:1]
+ *   [username_len:1][username:N][password_len:1][password:M]
+ *
+ * Login is allowed at any auth_state. Rate limited.
+ */
+entrypoint
+typedef struct _LoginRequest
+{
+    UINT8  auth_state;
+    UINT8  rate_count;
+    UINT32 path_hash;
+    UINT8  method;
+    UINT8  _check
+    {
+        path_hash == PATH_LOGIN &&
+        method == METHOD_POST &&
+        rate_count < MAX_RATE
+    };
+    UINT8  username_len { username_len >= 1 && username_len <= 32 };
+    UINT8  username[username_len];
+    UINT8  password_len { password_len >= 1 && password_len <= 64 };
+    UINT8  password[password_len];
+} LoginRequest;
+
+/*
+ * Validator 2: PolicyBlob
+ *
+ * Validates that an uploaded policy blob is well-formed AND
+ * that the uploader is ADMIN.
+ *
+ * Buffer layout:
+ *   [auth_state:1][rate_count:1][num_rules:1]
+ *   [rule_0:6][rule_1:6]...[rule_7:6]  (always 8 slots = 48 bytes)
+ *
+ * Each rule: [path_hash:4][method:1][min_role:1]
+ *
+ * Constraints:
+ *   - auth_state >= ADMIN (admin only)
+ *   - rate_count < MAX_RATE
+ *   - 1 <= num_rules <= 8
+ *   - Each active rule: method in {1,2,3}, min_role in {0,1,2}
+ *     (Checked in glue code — flat struct can't iterate)
+ */
+entrypoint
+typedef struct _PolicyBlob
+{
+    UINT8 auth_state;
+    UINT8 rate_count;
+    UINT8 num_rules;
+
+    /* Rule 0 */
+    UINT32 r0_path_hash;
+    UINT8  r0_method;
+    UINT8  r0_min_role;
+
+    /* Rule 1 */
+    UINT32 r1_path_hash;
+    UINT8  r1_method;
+    UINT8  r1_min_role;
+
+    /* Rule 2 */
+    UINT32 r2_path_hash;
+    UINT8  r2_method;
+    UINT8  r2_min_role;
+
+    /* Rule 3 */
+    UINT32 r3_path_hash;
+    UINT8  r3_method;
+    UINT8  r3_min_role;
+
+    /* Rule 4 */
+    UINT32 r4_path_hash;
+    UINT8  r4_method;
+    UINT8  r4_min_role;
+
+    /* Rule 5 */
+    UINT32 r5_path_hash;
+    UINT8  r5_method;
+    UINT8  r5_min_role;
+
+    /* Rule 6 */
+    UINT32 r6_path_hash;
+    UINT8  r6_method;
+    UINT8  r6_min_role;
+
+    /* Rule 7 */
+    UINT32 r7_path_hash;
+    UINT8  r7_method;
+    UINT8  r7_min_role;
+
+    UINT8 _auth_ok { auth_state >= ROLE_ADMIN };
+    UINT8 _rate_ok { rate_count < MAX_RATE };
+    UINT8 _rules_ok { num_rules >= 1 && num_rules <= MAX_RULES };
+} PolicyBlob;
+
+/*
+ * Validator 3: AccessRequest
+ *
+ * Enforces policy rules with RBAC role hierarchy.
+ * Hybrid CNF+DNF: rate limit (CNF) AND access rules (DNF).
+ *
+ * Buffer layout:
+ *   [auth_state:1][rate_count:1]
+ *   [rule_0:6][rule_1:6]...[rule_7:6]  (8 rules = 48 bytes)
+ *   [req_path_hash:4][req_method:1]
+ *   [_rate_ok:1][_access_ok:1]
+ *
+ * Total: 2 + 48 + 5 + 2 = 57 bytes
+ */
+entrypoint
+typedef struct _AccessRequest
+{
+    UINT8  auth_state;
+    UINT8  rate_count;
+
+    /* Rule 0 */
+    UINT32 r0_path_hash;
+    UINT8  r0_method;
+    UINT8  r0_min_role;
+
+    /* Rule 1 */
+    UINT32 r1_path_hash;
+    UINT8  r1_method;
+    UINT8  r1_min_role;
+
+    /* Rule 2 */
+    UINT32 r2_path_hash;
+    UINT8  r2_method;
+    UINT8  r2_min_role;
+
+    /* Rule 3 */
+    UINT32 r3_path_hash;
+    UINT8  r3_method;
+    UINT8  r3_min_role;
+
+    /* Rule 4 */
+    UINT32 r4_path_hash;
+    UINT8  r4_method;
+    UINT8  r4_min_role;
+
+    /* Rule 5 */
+    UINT32 r5_path_hash;
+    UINT8  r5_method;
+    UINT8  r5_min_role;
+
+    /* Rule 6 */
+    UINT32 r6_path_hash;
+    UINT8  r6_method;
+    UINT8  r6_min_role;
+
+    /* Rule 7 */
+    UINT32 r7_path_hash;
+    UINT8  r7_method;
+    UINT8  r7_min_role;
+
+    /* Request */
+    UINT32 req_path_hash;
+    UINT8  req_method;
+
+    /* Rate limit (CNF) */
+    UINT8 _rate_ok { rate_count < MAX_RATE };
+
+    /* Access control (DNF): at least one rule must match */
+    UINT8 _access_ok
+    {
+        (r0_path_hash == req_path_hash && r0_method == req_method && auth_state >= r0_min_role) ||
+        (r1_path_hash == req_path_hash && r1_method == req_method && auth_state >= r1_min_role) ||
+        (r2_path_hash == req_path_hash && r2_method == req_method && auth_state >= r2_min_role) ||
+        (r3_path_hash == req_path_hash && r3_method == req_method && auth_state >= r3_min_role) ||
+        (r4_path_hash == req_path_hash && r4_method == req_method && auth_state >= r4_min_role) ||
+        (r5_path_hash == req_path_hash && r5_method == req_method && auth_state >= r5_min_role) ||
+        (r6_path_hash == req_path_hash && r6_method == req_method && auth_state >= r6_min_role) ||
+        (r7_path_hash == req_path_hash && r7_method == req_method && auth_state >= r7_min_role)
+    };
+} AccessRequest;

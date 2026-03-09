@@ -1,0 +1,13 @@
+/*
+ * B1 Variant C: Minimal bitwise AND test
+ * Check if (a & b) != 0  (any overlapping bits)
+ *
+ * Buffer: [a:u32le][b:u32le][_check:u8]  = 9 bytes
+ */
+entrypoint
+typedef struct _BitTestC
+{
+    UINT32 a;
+    UINT32 b;
+    UINT8  _check { (a & b) != 0 };
+} BitTestC;

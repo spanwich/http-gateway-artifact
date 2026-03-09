@@ -1,0 +1,15 @@
+/*
+ * B2-A: Multiplication in constraint (with overflow guard)
+ * Modbus-like: byte_count == quantity * 2
+ * Guard: quantity <= 127 ensures quantity * 2 <= 254 (fits in UINT8)
+ *
+ * Buffer: [quantity:u16le][byte_count:u8][_guard:u8][_check:u8]  = 5 bytes
+ */
+entrypoint
+typedef struct _ArithMul
+{
+    UINT16 quantity;
+    UINT8  byte_count;
+    UINT8  _guard { quantity <= 127 };
+    UINT8  _check { byte_count == quantity * 2 };
+} ArithMul;
