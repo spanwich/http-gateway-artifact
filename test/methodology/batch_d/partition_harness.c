@@ -62,7 +62,7 @@ void MonoAccess16EverParseError(
 #define PATH_C      0xCCCCCCCCu
 #define PATH_D      0xDDDDDDDDu
 #define PATH_E      0xEEEEEEEEu
-#define DEAD_HASH   0xDEADDEADu
+#define INACTIVE_PATH_ID   0xDEADDEADu
 
 #define RATE_OK     5
 #define RATE_OVER   99
@@ -70,7 +70,7 @@ void MonoAccess16EverParseError(
 /* ---- Rule type ---- */
 
 typedef struct {
-    uint32_t path_hash;
+    uint32_t path_id;
     uint8_t  method;
     uint8_t  min_role;
 } Rule;
@@ -87,7 +87,7 @@ static void write_u32(uint8_t *buf, int off, uint32_t v)
 
 static void write_rule(uint8_t *buf, int off, const Rule *r)
 {
-    write_u32(buf, off, r->path_hash);
+    write_u32(buf, off, r->path_id);
     buf[off + 4] = r->method;
     buf[off + 5] = r->min_role;
 }
@@ -204,7 +204,7 @@ static void check_equiv(int id, const char *desc,
 static void fill_dead(Rule *rules, int count)
 {
     for (int i = 0; i < count; i++) {
-        rules[i].path_hash = DEAD_HASH;
+        rules[i].path_id = INACTIVE_PATH_ID;
         rules[i].method    = 0;
         rules[i].min_role  = 0;
     }
@@ -213,7 +213,7 @@ static void fill_dead(Rule *rules, int count)
 static void set_rule(Rule *rules, int idx,
                      uint32_t path, uint8_t method, uint8_t min_role)
 {
-    rules[idx].path_hash = path;
+    rules[idx].path_id = path;
     rules[idx].method    = method;
     rules[idx].min_role  = min_role;
 }
@@ -228,7 +228,7 @@ static void set_rule(Rule *rules, int idx,
  *   Rule 4:  PATH_B, POST, ADMIN     (partition 0)
  *   Rule 8:  PATH_C, GET, OPERATOR   (partition 1)
  *   Rule 12: PATH_D, POST, NONE      (partition 1)
- *   All others: DEAD_HASH
+ *   All others: INACTIVE_PATH_ID
  */
 static void group_a(void)
 {
@@ -284,14 +284,14 @@ static void group_b(void)
 
     printf("\n=== Group B: Part-2 Deny-by-Default & Functional (7 tests) ===\n");
 
-    /* B01-B02: All-dead deny-by-default */
+    /* B01-B02: All-inactive deny-by-default */
     fill_dead(rules, 16);
 
     result = run_partitioned(2, rules, PATH_A, METHOD_GET, ROLE_OPERATOR, RATE_OK);
-    check("B", 1, "all-dead 2 partitions, rate OK -> DENY", result, FALSE);
+    check("B", 1, "all-inactive 2 partitions, rate OK -> DENY", result, FALSE);
 
     result = run_partitioned(2, rules, PATH_A, METHOD_GET, ROLE_OPERATOR, RATE_OVER);
-    check("B", 2, "all-dead 2 partitions, rate exceeded -> DENY", result, FALSE);
+    check("B", 2, "all-inactive 2 partitions, rate exceeded -> DENY", result, FALSE);
 
     /* B03-B05: Single active rule boundary positions */
     fill_dead(rules, 16);
@@ -375,13 +375,13 @@ static void group_c(void)
     result = run_partitioned(4, rules, PATH_A, METHOD_GET, ROLE_OPERATOR, RATE_OVER);
     check("C", 10, "rate exceeded overrides match", result, FALSE);
 
-    /* Deny-by-default: all dead across 4 partitions */
+    /* Deny-by-default: all inactive across 4 partitions */
     fill_dead(rules, 32);
     result = run_partitioned(4, rules, PATH_A, METHOD_GET, ROLE_ADMIN, RATE_OK);
-    check("C", 11, "all-dead 4 partitions -> DENY", result, FALSE);
+    check("C", 11, "all-inactive 4 partitions -> DENY", result, FALSE);
 
     result = run_partitioned(4, rules, PATH_A, METHOD_GET, ROLE_ADMIN, RATE_OVER);
-    check("C", 12, "all-dead 4 partitions + rate exceeded -> DENY", result, FALSE);
+    check("C", 12, "all-inactive 4 partitions + rate exceeded -> DENY", result, FALSE);
 }
 
 /*
@@ -437,10 +437,10 @@ static void group_d(void)
     /* Deny-by-default */
     fill_dead(rules, 64);
     result = run_partitioned(8, rules, PATH_A, METHOD_GET, ROLE_ADMIN, RATE_OK);
-    check("D", 11, "all-dead 8 partitions -> DENY", result, FALSE);
+    check("D", 11, "all-inactive 8 partitions -> DENY", result, FALSE);
 
     result = run_partitioned(8, rules, PATH_A, METHOD_GET, ROLE_ADMIN, RATE_OVER);
-    check("D", 12, "all-dead 8 partitions + rate exceeded -> DENY", result, FALSE);
+    check("D", 12, "all-inactive 8 partitions + rate exceeded -> DENY", result, FALSE);
 }
 
 /*
@@ -496,10 +496,10 @@ static void group_e(void)
     /* Deny-by-default */
     fill_dead(rules, 128);
     result = run_partitioned(16, rules, PATH_A, METHOD_GET, ROLE_ADMIN, RATE_OK);
-    check("E", 11, "all-dead 16 partitions -> DENY", result, FALSE);
+    check("E", 11, "all-inactive 16 partitions -> DENY", result, FALSE);
 
     result = run_partitioned(16, rules, PATH_A, METHOD_GET, ROLE_ADMIN, RATE_OVER);
-    check("E", 12, "all-dead 16 partitions + rate exceeded -> DENY", result, FALSE);
+    check("E", 12, "all-inactive 16 partitions + rate exceeded -> DENY", result, FALSE);
 }
 
 /*
@@ -519,7 +519,7 @@ static void group_f(void)
     result = run_partitioned(2, rules, PATH_A, METHOD_GET, ROLE_OPERATOR, RATE_OK);
     check("F", 1, "Part-2 match in both partitions -> ACCEPT", result, TRUE);
 
-    /* F02: Part-4, match in partition 0 (short-circuit, others dead) */
+    /* F02: Part-4, match in partition 0 (short-circuit, others inactive) */
     fill_dead(rules, 32);
     set_rule(rules, 0, PATH_A, METHOD_GET, ROLE_OPERATOR);
     result = run_partitioned(4, rules, PATH_A, METHOD_GET, ROLE_OPERATOR, RATE_OK);

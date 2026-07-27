@@ -81,7 +81,7 @@ static uint32_t build_policy_body(uint8_t *body, uint8_t num_rules,
     body[0] = num_rules;
     for (int i = 0; i < MAX_RULES; i++) {
         int off = 1 + i * 6;
-        test_write_u32(body, off, rules[i].path_hash);
+        test_write_u32(body, off, rules[i].path_id);
         body[off + 4] = rules[i].method;
         body[off + 5] = rules[i].min_role;
     }
@@ -89,11 +89,11 @@ static uint32_t build_policy_body(uint8_t *body, uint8_t num_rules,
 }
 
 /* Helper: build a MockHTTPRequest */
-static MockHTTPRequest make_req(uint32_t path_hash, uint8_t method,
+static MockHTTPRequest make_req(uint32_t path_id, uint8_t method,
                                 const uint8_t *body, uint32_t body_len)
 {
     MockHTTPRequest r;
-    r.path_hash = path_hash;
+    r.path_id = path_id;
     r.method = method;
     r.content_length = body_len;
     r.body = body;
@@ -259,7 +259,7 @@ static void scenario_c3(void)
     printf("=== Scenario C3: Extractor Rejection ===\n");
 
     /* 1. content_length=100000 (exceeds 65536) -> EXTRACTION_FAILED */
-    req.path_hash = PATH_STATUS;
+    req.path_id = PATH_STATUS;
     req.method = METHOD_GET;
     req.content_length = 100000;
     req.body = NULL;
@@ -269,7 +269,7 @@ static void scenario_c3(void)
                r, RESULT_EXTRACTION_FAILED, get_role(&sessions, 0xF1), ROLE_NONE);
 
     /* 2. method=0 (invalid) -> EXTRACTION_FAILED */
-    req.path_hash = PATH_STATUS;
+    req.path_id = PATH_STATUS;
     req.method = 0;
     req.content_length = 0;
     req.body = NULL;
@@ -324,11 +324,11 @@ static void scenario_c4(void)
         { PATH_STATUS, METHOD_GET,  ROLE_ADMIN },    /* was OPERATOR */
         { PATH_LOGOUT, METHOD_POST, ROLE_OPERATOR },
         { PATH_POLICY, METHOD_GET,  ROLE_ADMIN },
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
     };
     body_len = build_policy_body(body, 3, new_rules);
     req = make_req(PATH_POLICY, METHOD_PUT, body, body_len);
@@ -400,11 +400,11 @@ static void scenario_c5(void)
         { PATH_STATUS, METHOD_GET,  ROLE_ADMIN },
         { PATH_LOGOUT, METHOD_POST, ROLE_OPERATOR },
         { PATH_POLICY, METHOD_GET,  ROLE_ADMIN },
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
     };
     body_len = build_policy_body(body, 3, new_rules);
     req = make_req(PATH_POLICY, METHOD_PUT, body, body_len);

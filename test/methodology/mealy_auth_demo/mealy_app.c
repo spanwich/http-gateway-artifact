@@ -18,7 +18,7 @@
  * Common header:
  *   [0]     auth_state   (UINT8)
  *   [1]     rate_count   (UINT8)
- *   [2..5]  path_hash    (UINT32 LE)
+ *   [2..5]  path_id    (UINT32 LE)
  *   [6]     method       (UINT8)
  *   [7]     _check       (UINT8, value irrelevant — constraint uses other fields)
  *
@@ -28,7 +28,7 @@
  *   [9+N]         password_len  (UINT8)
  *   [10+N..9+N+M] password      (M bytes)
  */
-#define HEADER_SIZE 8   /* auth_state + rate_count + path_hash + method + _check */
+#define HEADER_SIZE 8   /* auth_state + rate_count + path_id + method + _check */
 
 /* Required by EverParse generated wrapper */
 void MealyAuthEverParseError(
@@ -41,15 +41,15 @@ void MealyAuthEverParseError(
 
 /* Write common header into buffer. Returns header size. */
 static uint32_t write_header(uint8_t *buf, const Session *s,
-                              uint32_t path_hash, uint8_t method)
+                              uint32_t path_id, uint8_t method)
 {
     buf[0] = s->auth_state;
     buf[1] = s->rate_count;
-    /* path_hash: little-endian UINT32 */
-    buf[2] = (path_hash >>  0) & 0xFF;
-    buf[3] = (path_hash >>  8) & 0xFF;
-    buf[4] = (path_hash >> 16) & 0xFF;
-    buf[5] = (path_hash >> 24) & 0xFF;
+    /* path_id: little-endian UINT32 */
+    buf[2] = (path_id >>  0) & 0xFF;
+    buf[3] = (path_id >>  8) & 0xFF;
+    buf[4] = (path_id >> 16) & 0xFF;
+    buf[5] = (path_id >> 24) & 0xFF;
     buf[6] = method;
     buf[7] = 0x00; /* _check byte — value irrelevant, constraint reads other fields */
     return HEADER_SIZE;
@@ -70,15 +70,15 @@ void session_reset(Session *s)
     session_init(s);
 }
 
-RequestResult process_simple_request(Session *s, uint32_t path_hash, uint8_t method)
+RequestResult process_simple_request(Session *s, uint32_t path_id, uint8_t method)
 {
     uint8_t buf[HEADER_SIZE];
-    write_header(buf, s, path_hash, method);
+    write_header(buf, s, path_id, method);
 
     BOOLEAN accepted;
-    if (path_hash == PATH_LOGOUT) {
+    if (path_id == PATH_LOGOUT) {
         accepted = MealyAuthCheckLogoutRequest(buf, HEADER_SIZE);
-    } else if (path_hash == PATH_STATUS) {
+    } else if (path_id == PATH_STATUS) {
         accepted = MealyAuthCheckStatusRequest(buf, HEADER_SIZE);
     } else {
         /* Unknown request type — no validator exists → denied */
@@ -93,7 +93,7 @@ RequestResult process_simple_request(Session *s, uint32_t path_hash, uint8_t met
     }
 
     /* EverParse accepted — execute application logic */
-    if (path_hash == PATH_LOGOUT) {
+    if (path_id == PATH_LOGOUT) {
         s->auth_state = AUTH_UNAUTH;
         return RESULT_LOGOUT_SUCCESS;
     } else { /* PATH_STATUS */
@@ -134,7 +134,7 @@ RequestResult process_login_request(Session *s,
      * Layer 2: App-level credential check (unverified but simple).
      *
      * EverParse already validated:
-     *   - path_hash == PATH_LOGIN
+     *   - path_id == PATH_LOGIN
      *   - method == METHOD_POST
      *   - rate_count < MAX_RATE
      *   - 1 <= username_len <= 32

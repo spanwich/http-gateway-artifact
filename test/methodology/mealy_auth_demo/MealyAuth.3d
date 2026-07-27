@@ -3,7 +3,7 @@
  *
  * Three request validators, one per permitted request type.
  * The glue code dispatches to the correct validator based on
- * (path_hash, method) from the raw request. Each validator
+ * (path_id, method) from the raw request. Each validator
  * enforces auth state, rate limit, and request-specific constraints.
  *
  * Architecture:
@@ -34,7 +34,7 @@
  * Rate limit enforced. Credential lengths bounded.
  *
  * Buffer layout:
- *   [auth_state:1][rate_count:1][path_hash:4][method:1]
+ *   [auth_state:1][rate_count:1][path_id:4][method:1]
  *   [_check:1]
  *   [username_len:1][username:N][password_len:1][password:M]
  *
@@ -45,11 +45,11 @@ typedef struct _LoginRequest
 {
     UINT8  auth_state;
     UINT8  rate_count;
-    UINT32 path_hash;
+    UINT32 path_id;
     UINT8  method;
     UINT8  _check
     {
-        path_hash == PATH_LOGIN &&
+        path_id == PATH_LOGIN &&
         method == METHOD_POST &&
         rate_count < MAX_RATE
     };
@@ -65,7 +65,7 @@ typedef struct _LoginRequest
  * Requires AUTH_OK state. No body.
  *
  * Buffer layout:
- *   [auth_state:1][rate_count:1][path_hash:4][method:1][_check:1]
+ *   [auth_state:1][rate_count:1][path_id:4][method:1][_check:1]
  *
  * Total: 8 bytes
  */
@@ -74,11 +74,11 @@ typedef struct _LogoutRequest
 {
     UINT8  auth_state;
     UINT8  rate_count;
-    UINT32 path_hash;
+    UINT32 path_id;
     UINT8  method;
     UINT8  _check
     {
-        path_hash == PATH_LOGOUT &&
+        path_id == PATH_LOGOUT &&
         method == METHOD_POST &&
         auth_state == AUTH_OK &&
         rate_count < MAX_RATE
@@ -91,7 +91,7 @@ typedef struct _LogoutRequest
  * Requires AUTH_OK state. No body.
  *
  * Buffer layout:
- *   [auth_state:1][rate_count:1][path_hash:4][method:1][_check:1]
+ *   [auth_state:1][rate_count:1][path_id:4][method:1][_check:1]
  *
  * Total: 8 bytes
  */
@@ -100,11 +100,11 @@ typedef struct _StatusRequest
 {
     UINT8  auth_state;
     UINT8  rate_count;
-    UINT32 path_hash;
+    UINT32 path_id;
     UINT8  method;
     UINT8  _check
     {
-        path_hash == PATH_STATUS &&
+        path_id == PATH_STATUS &&
         method == METHOD_GET &&
         auth_state == AUTH_OK &&
         rate_count < MAX_RATE

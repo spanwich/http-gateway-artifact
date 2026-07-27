@@ -2,7 +2,7 @@
  * ProtectedApp.c -- CAmkES component: resource server (Phase 4)
  *
  * Receives authorized AppRequests from PolicyGate (Link 5 forward).
- * Dispatches by path_hash and produces AppResponses.
+ * Dispatches by path_id and produces AppResponses.
  *
  * This component has ZERO auth/crypto awareness.
  * PolicyGate has already verified the request is authorized.
@@ -18,7 +18,7 @@
 
 #include "web_common.h"
 #include "app_wire.h"
-#include "path_hashes.h"
+#include "path_ids.h"
 
 static const char *role_name(uint8_t role)
 {
@@ -87,15 +87,15 @@ int run(void)
                 AppRequest *req = (AppRequest *)slot->data;
 
                 printf("[ProtectedApp] path=0x%08lx method=%u role=%s\n",
-                       (unsigned long)req->path_hash,
+                       (unsigned long)req->path_id,
                        req->method, role_name(req->role));
 
                 static uint8_t resp_buf[WEB_FRAME_MTU];
                 uint32_t resp_len = 0;
 
-                if (req->path_hash == PATH_STATUS && req->method == METHOD_GET) {
+                if (req->path_id == PATH_STATUS && req->method == METHOD_GET) {
                     resp_len = handle_status(req, resp_buf);
-                } else if (req->path_hash == PATH_POLICY && req->method == METHOD_GET) {
+                } else if (req->path_id == PATH_POLICY && req->method == METHOD_GET) {
                     resp_len = handle_policy_get(req, resp_buf);
                 } else {
                     resp_len = handle_default(req, resp_buf);

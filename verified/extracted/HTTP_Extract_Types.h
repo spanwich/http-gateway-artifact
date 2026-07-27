@@ -30,7 +30,7 @@ extern uint32_t max_inline_body;
 
 extern uint32_t off_rate_count;
 
-extern uint32_t off_path_hash;
+extern uint32_t off_path_id;
 
 extern uint32_t off_method;
 
@@ -75,7 +75,7 @@ method_result;
 
 typedef struct path_result_s
 {
-  uint32_t pr_hash;
+  uint32_t pr_id;
   bool pr_is_root;
 }
 path_result;

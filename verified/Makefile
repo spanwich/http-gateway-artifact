@@ -113,9 +113,9 @@ test-method: extract
 	$(CC) $(CFLAGS) test_method.c $(EXTRACTED_C) -o test_method
 	./test_method
 
-# Test extract_path_hash
+# Test extract_path_id
 test-path: extract
-	@echo "=== Testing extract_path_hash ==="
+	@echo "=== Testing extract_path_id ==="
 	$(CC) $(CFLAGS) test_path.c $(EXTRACTED_C) -o test_path
 	./test_path
 

@@ -22,12 +22,12 @@
 #define METHOD_POST   2
 #define METHOD_PUT    3
 
-/* Path hashes (must match RbacPolicy.3d) */
+/* Path ids (must match RbacPolicy.3d) */
 #define PATH_LOGIN    0x11111111u
 #define PATH_LOGOUT   0x22222222u
 #define PATH_STATUS   0x33333333u
 #define PATH_POLICY   0x44444444u
-#define DEAD_HASH     0xDEADDEADu
+#define INACTIVE_PATH_ID     0xDEADDEADu
 
 /* Limits (must match RbacPolicy.3d) */
 #define MAX_RATE      50
@@ -49,7 +49,7 @@ typedef enum {
 
 /* A single policy rule */
 typedef struct {
-    uint32_t path_hash;
+    uint32_t path_id;
     uint8_t  method;
     uint8_t  min_role;
     uint16_t req_scope;

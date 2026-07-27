@@ -11,7 +11,7 @@ extern "C" {
 
 #define SCALETEST16____MAX_RATE (50U)
 
-#define SCALETEST16____DEAD_HASH (0xDEADDEADU)
+#define SCALETEST16____INACTIVE_PATH_ID (0xDEADDEADU)
 
 uint64_t
 ScaleTest16ValidateScaleTest16(

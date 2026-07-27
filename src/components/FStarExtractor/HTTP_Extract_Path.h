@@ -28,7 +28,7 @@ bool is_path_status(uint8_t *buf, uint32_t ps);
 
 bool is_path_policy(uint8_t *buf, uint32_t ps);
 
-path_result extract_path_hash(uint8_t *buf, uint32_t method_end, uint32_t header_end);
+path_result extract_path_id(uint8_t *buf, uint32_t method_end, uint32_t header_end);
 
 
 #define HTTP_Extract_Path_H_DEFINED

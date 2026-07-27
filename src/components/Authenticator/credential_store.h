@@ -8,7 +8,7 @@
 #define CREDENTIAL_STORE_H
 
 #include <stdint.h>
-#include "path_hashes.h"
+#include "path_ids.h"
 
 #define SUBJECT_ID_MAX 32
 

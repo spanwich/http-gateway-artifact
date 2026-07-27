@@ -78,7 +78,7 @@ extract_security_params(
     }
     else
     {
-      path_result pr = extract_path_hash(http_buf, mr.mr_end, hdr_end);
+      path_result pr = extract_path_id(http_buf, mr.mr_end, hdr_end);
       if (pr.pr_is_root)
       {
         fill_zero(out_buf, 0U, 175U);
@@ -86,7 +86,7 @@ extract_security_params(
         out_len[0U] = 175U;
         return 0U;
       }
-      else if (pr.pr_hash == 0U)
+      else if (pr.pr_id == 0U)
       {
         uint32_t path_start = mr.mr_end;
         uint32_t path_end = find_path_end(http_buf, hdr_end, path_start);
@@ -126,7 +126,7 @@ extract_security_params(
             else
               body_len = 0U;
             fill_zero(out_buf, 0U, 175U);
-            write_u32_le(out_buf, 1U, pr.pr_hash);
+            write_u32_le(out_buf, 1U, pr.pr_id);
             out_buf[5U] = mr.mr_code;
             uint8_t *token_sub = out_buf + 43U;
             uint8_t tklen = extract_bearer_token(http_buf, hdr_end, token_sub);

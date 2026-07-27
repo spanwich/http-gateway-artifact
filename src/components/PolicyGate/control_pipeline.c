@@ -54,7 +54,7 @@ static void write_u16(uint8_t *buf, int offset, uint16_t val)
 /* Write a policy rule (8 bytes) at offset */
 static void write_rule(uint8_t *buf, int offset, const PolicyRule *r)
 {
-    write_u32(buf, offset, r->path_hash);
+    write_u32(buf, offset, r->path_id);
     buf[offset + 4] = r->method;
     buf[offset + 5] = r->min_role;
     write_u16(buf, offset + 6, r->req_scope);
@@ -75,7 +75,7 @@ void policy_init_default(Policy *p)
     p->rules[1] = (PolicyRule){ PATH_LOGOUT, METHOD_POST, ROLE_OPERATOR, 0x0000 }; /* no scope */
     p->rules[2] = (PolicyRule){ PATH_POLICY, METHOD_GET,  ROLE_ADMIN,    0x0004 }; /* CONFIGURE */
     for (int i = 3; i < MAX_RULES; i++) {
-        p->rules[i] = (PolicyRule){ DEAD_HASH, 0, 0, 0x0000 };
+        p->rules[i] = (PolicyRule){ INACTIVE_PATH_ID, 0, 0, 0x0000 };
     }
 }
 
@@ -105,7 +105,7 @@ static uint32_t make_app_request(uint8_t *buf,
 {
     AppRequest *req = (AppRequest *)buf;
     req->conn_id = 0;  /* single-client demo */
-    req->path_hash = params->path_hash;
+    req->path_id = params->path_id;
     req->method = params->method;
     req->role = params->role;
     req->scope = params->scope;
@@ -174,7 +174,7 @@ static int handle_policy_update(Policy *p,
     p->num_rules = num_rules;
     for (int i = 0; i < MAX_RULES; i++) {
         int off = 1 + i * 8;
-        p->rules[i].path_hash =
+        p->rules[i].path_id =
             (uint32_t)body[off + 0] |
             ((uint32_t)body[off + 1] << 8) |
             ((uint32_t)body[off + 2] << 16) |
@@ -195,7 +195,7 @@ static int handle_policy_update(Policy *p,
  * Process general access request (validated by EverParse, forwarded to ProtectedApp).
  *
  * Phase 5 AccessRequest layout:
- *   [auth_state:1][rate_count:1][auth_scope:2][rules:64][path_hash:4][method:1]
+ *   [auth_state:1][rate_count:1][auth_scope:2][rules:64][path_id:4][method:1]
  *   [_rate_ok:1][_access_ok:1]
  */
 static int handle_access_request(const Policy *p,
@@ -204,7 +204,7 @@ static int handle_access_request(const Policy *p,
                                   uint8_t *app_buf, uint32_t *app_len)
 {
     uint8_t conn_id = 0;  /* single-client demo */
-    uint32_t path_hash = params->path_hash;
+    uint32_t path_id = params->path_id;
     uint8_t method = params->method;
 
     /* Defense-in-depth: rate pre-check for correct HTTP 429 status code.
@@ -218,7 +218,7 @@ static int handle_access_request(const Policy *p,
     }
 
     /* Build AccessRequest buffer for EverParse.
-     * Layout: [auth_state:1][rate_count:1][auth_scope:2][rules:64][path_hash:4][method:1]
+     * Layout: [auth_state:1][rate_count:1][auth_scope:2][rules:64][path_id:4][method:1]
      * auth_state = role, auth_scope = scope (both pre-resolved by Authenticator). */
     uint8_t buf[ACCESS_REQ_SIZE];
     memset(buf, 0, ACCESS_REQ_SIZE);
@@ -226,7 +226,7 @@ static int handle_access_request(const Policy *p,
     buf[1] = params->rate_count;  /* rate_count from RateLimiter */
     write_u16(buf, 2, params->scope); /* auth_scope from SecurityParamsWire */
     write_rules(buf, 4, p);           /* rules at offset 4 */
-    write_u32(buf, 68, path_hash);
+    write_u32(buf, 68, path_id);
     buf[72] = method;
 
     BOOLEAN accepted = RbacPolicyCheckAccessRequest(buf, ACCESS_REQ_SIZE);
@@ -251,18 +251,18 @@ int pipeline_process(Policy *policy,
                      uint8_t *gate_buf, uint32_t *gate_len,
                      uint8_t *app_buf, uint32_t *app_len)
 {
-    uint32_t path_hash = params->path_hash;
+    uint32_t path_id = params->path_id;
     uint8_t method = params->method;
 
     printf("[PolicyGate] path=0x%08lx method=%u role=%s scope=0x%04x\n",
-           (unsigned long)path_hash, method, role_name(params->role),
+           (unsigned long)path_id, method, role_name(params->role),
            params->scope);
 
     *gate_len = 0;
     *app_len = 0;
 
     /* PUT /api/policy: policy update (handled entirely by PolicyGate) */
-    if (path_hash == PATH_POLICY && method == METHOD_PUT) {
+    if (path_id == PATH_POLICY && method == METHOD_PUT) {
         return handle_policy_update(policy, params, gate_buf, gate_len);
     }
 

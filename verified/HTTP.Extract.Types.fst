@@ -21,8 +21,8 @@ inline_for_extraction let method_post: U8.t = 2uy
 inline_for_extraction let method_put:  U8.t = 3uy
 
 (* ============================================================
- * Path hash sentinel constants — must match control_pipeline.h
- * These are NOT DJB2 hashes. They are fixed lookup values.
+ * Path id sentinel constants — must match control_pipeline.h
+ * These are NOT computed hashes. They are fixed sentinel lookup values.
  * ============================================================ *)
 inline_for_extraction let path_login:  U32.t = 0x11111111ul
 inline_for_extraction let path_logout: U32.t = 0x22222222ul
@@ -37,7 +37,7 @@ inline_for_extraction let max_inline_body: U32.t = 1361ul  (* 1536 - 175 *)
 
 (* Field offsets within SecurityParamsWire *)
 inline_for_extraction let off_rate_count:     U32.t = 0ul
-inline_for_extraction let off_path_hash:      U32.t = 1ul
+inline_for_extraction let off_path_id:      U32.t = 1ul
 inline_for_extraction let off_method:         U32.t = 5ul
 inline_for_extraction let off_role:           U32.t = 6ul
 inline_for_extraction let off_scope_lo:       U32.t = 7ul
@@ -71,9 +71,9 @@ type method_result = {
 }
 
 (* ============================================================
- * Path extraction result (returned by extract_path_hash)
+ * Path extraction result (returned by extract_path_id)
  * ============================================================ *)
 type path_result = {
-  pr_hash: U32.t;   (* sentinel hash, 0 = unknown/rejected *)
+  pr_id: U32.t;   (* sentinel id, 0 = unknown/rejected *)
   pr_is_root: bool;  (* true if path is exactly "/" *)
 }

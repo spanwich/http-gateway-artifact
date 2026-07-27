@@ -27,7 +27,7 @@ uint32_t max_inline_body = 1361U;
 
 uint32_t off_rate_count = 0U;
 
-uint32_t off_path_hash = 1U;
+uint32_t off_path_id = 1U;
 
 uint32_t off_method = 5U;
 

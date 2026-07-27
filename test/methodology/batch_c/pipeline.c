@@ -26,7 +26,7 @@ static const Credential credentials[] = {
  * Buffer layout constants (must match RbacPolicy.3d struct layouts)
  * See batch_a/priority_1_2_rbac/rbac_app.c for full documentation.
  */
-#define LOGIN_HEADER_SIZE 8   /* auth_state + rate_count + path_hash + method + _check */
+#define LOGIN_HEADER_SIZE 8   /* auth_state + rate_count + path_id + method + _check */
 #define POLICY_BLOB_SIZE  54  /* 3 + 48 + 3 */
 #define ACCESS_REQ_SIZE   57  /* 2 + 48 + 5 + 2 */
 
@@ -51,7 +51,7 @@ static void write_u32(uint8_t *buf, int offset, uint32_t val)
 /* Write a policy rule (6 bytes) at offset */
 static void write_rule(uint8_t *buf, int offset, const PolicyRule *r)
 {
-    write_u32(buf, offset, r->path_hash);
+    write_u32(buf, offset, r->path_id);
     buf[offset + 4] = r->method;
     buf[offset + 5] = r->min_role;
 }
@@ -77,9 +77,9 @@ void policy_init_default(Policy *p)
     /* Rule 2: GET /policy requires ADMIN */
     p->rules[2] = (PolicyRule){ PATH_POLICY, METHOD_GET, ROLE_ADMIN };
 
-    /* Rules 3-7: unused (DEAD_HASH) */
+    /* Rules 3-7: unused (INACTIVE_PATH_ID) */
     for (int i = 3; i < MAX_RULES; i++) {
-        p->rules[i] = (PolicyRule){ DEAD_HASH, 0, 0 };
+        p->rules[i] = (PolicyRule){ INACTIVE_PATH_ID, 0, 0 };
     }
 }
 
@@ -187,7 +187,7 @@ static RequestResult handle_policy_update(SessionEntry *se, Policy *p,
     p->num_rules = num_rules;
     for (int i = 0; i < MAX_RULES; i++) {
         int off = 1 + i * 6; /* offset in body */
-        p->rules[i].path_hash =
+        p->rules[i].path_id =
             (uint32_t)body[off + 0] |
             ((uint32_t)body[off + 1] << 8) |
             ((uint32_t)body[off + 2] << 16) |
@@ -205,7 +205,7 @@ static RequestResult handle_policy_update(SessionEntry *se, Policy *p,
 static RequestResult handle_access_request(SessionEntry *se, const Policy *p,
                                            const SecurityParams *params)
 {
-    uint32_t path_hash = params->path_hash;
+    uint32_t path_id = params->path_id;
     uint8_t method = params->method;
 
     /* Build AccessRequest buffer */
@@ -215,7 +215,7 @@ static RequestResult handle_access_request(SessionEntry *se, const Policy *p,
     buf[0] = se->auth_state;
     buf[1] = se->rate_count;
     write_rules(buf, 2, p);
-    write_u32(buf, 50, path_hash);
+    write_u32(buf, 50, path_id);
     buf[54] = method;
 
     BOOLEAN accepted = RbacPolicyCheckAccessRequest(buf, ACCESS_REQ_SIZE);
@@ -227,12 +227,12 @@ static RequestResult handle_access_request(SessionEntry *se, const Policy *p,
     }
 
     /* Dispatch to endpoint */
-    if (path_hash == PATH_LOGOUT && method == METHOD_POST) {
+    if (path_id == PATH_LOGOUT && method == METHOD_POST) {
         se->auth_state = ROLE_NONE;
         return RESULT_LOGOUT_SUCCESS;
-    } else if (path_hash == PATH_STATUS && method == METHOD_GET) {
+    } else if (path_id == PATH_STATUS && method == METHOD_GET) {
         return RESULT_STATUS_OK;
-    } else if (path_hash == PATH_POLICY && method == METHOD_GET) {
+    } else if (path_id == PATH_POLICY && method == METHOD_GET) {
         return RESULT_POLICY_READ_OK;
     }
 
@@ -256,11 +256,11 @@ RequestResult pipeline_process(SessionTable *sessions, Policy *policy,
     }
 
     /* Step 3: Dispatch */
-    if (params.path_hash == PATH_LOGIN && params.method == METHOD_POST) {
+    if (params.path_id == PATH_LOGIN && params.method == METHOD_POST) {
         return handle_login(se, &params);
     }
 
-    if (params.path_hash == PATH_POLICY && params.method == METHOD_PUT) {
+    if (params.path_id == PATH_POLICY && params.method == METHOD_PUT) {
         return handle_policy_update(se, policy, &params);
     }
 

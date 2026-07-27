@@ -17,6 +17,7 @@
 #include <time.h>
 #include <stdint.h>
 #include "pipeline.h"
+#include "../../src/components/include/path_ids.h"
 #include "generated/RbacPolicyWrapper.h"
 
 static int total_passed = 0;
@@ -93,7 +94,7 @@ static uint32_t build_policy_body(uint8_t *body, uint8_t num_rules,
     body[0] = num_rules;
     for (int i = 0; i < MAX_RULES; i++) {
         int off = 1 + i * 8;
-        test_write_u32(body, off, rules[i].path_hash);
+        test_write_u32(body, off, rules[i].path_id);
         body[off + 4] = rules[i].method;
         body[off + 5] = rules[i].min_role;
         test_write_u16(body, off + 6, rules[i].req_scope);
@@ -102,11 +103,11 @@ static uint32_t build_policy_body(uint8_t *body, uint8_t num_rules,
 }
 
 /* Helper: build a MockHTTPRequest */
-static MockHTTPRequest make_req(uint32_t path_hash, uint8_t method,
+static MockHTTPRequest make_req(uint32_t path_id, uint8_t method,
                                 const uint8_t *body, uint32_t body_len)
 {
     MockHTTPRequest r;
-    r.path_hash = path_hash;
+    r.path_id = path_id;
     r.method = method;
     r.content_length = body_len;
     r.body = body;
@@ -272,7 +273,7 @@ static void scenario_c3(void)
     printf("=== Scenario C3: Extractor Rejection ===\n");
 
     /* 1. content_length=100000 (exceeds 65536) -> EXTRACTION_FAILED */
-    req.path_hash = PATH_STATUS;
+    req.path_id = PATH_STATUS;
     req.method = METHOD_GET;
     req.content_length = 100000;
     req.body = NULL;
@@ -282,7 +283,7 @@ static void scenario_c3(void)
                r, RESULT_EXTRACTION_FAILED, get_role(&sessions, 0xF1), ROLE_NONE);
 
     /* 2. method=0 (invalid) -> EXTRACTION_FAILED */
-    req.path_hash = PATH_STATUS;
+    req.path_id = PATH_STATUS;
     req.method = 0;
     req.content_length = 0;
     req.body = NULL;
@@ -337,11 +338,11 @@ static void scenario_c4(void)
         { PATH_STATUS, METHOD_GET,  ROLE_ADMIN,    0 },    /* was OPERATOR */
         { PATH_LOGOUT, METHOD_POST, ROLE_OPERATOR, 0 },
         { PATH_POLICY, METHOD_GET,  ROLE_ADMIN,    0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
     };
     body_len = build_policy_body(body, 3, new_rules);
     req = make_req(PATH_POLICY, METHOD_PUT, body, body_len);
@@ -413,11 +414,11 @@ static void scenario_c5(void)
         { PATH_STATUS, METHOD_GET,  ROLE_ADMIN,    0 },
         { PATH_LOGOUT, METHOD_POST, ROLE_OPERATOR, 0 },
         { PATH_POLICY, METHOD_GET,  ROLE_ADMIN,    0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
     };
     body_len = build_policy_body(body, 3, new_rules);
     req = make_req(PATH_POLICY, METHOD_PUT, body, body_len);
@@ -540,18 +541,13 @@ static void scenario_c7(void)
      * AccessRequest layout (75 bytes):
      *   [auth_state:1][rate_count:1][auth_scope:2]
      *   [rule_0:8]...[rule_7:8]  (64 bytes)
-     *   [req_path_hash:4][req_method:1]
+     *   [req_path_id:4][req_method:1]
      *   [_rate_ok:1][_access_ok:1]
      */
     #define SCOPE_ACCESS_REQ_SIZE 75
 
-    /* Helper for building scope test buffers inline */
-    #define SCOPE_READ_SENSORS  0x01
-    #define SCOPE_WRITE_SENSORS 0x02
-    #define SCOPE_CONFIGURE     0x04
-
     /* Policy: rule 0 = GET /status, OPERATOR, requires READ_SENSORS(0x01) */
-    /* All other rules are dead */
+    /* All other rules are inactive */
 
     uint8_t buf[SCOPE_ACCESS_REQ_SIZE];
     BOOLEAN accepted;
@@ -559,13 +555,13 @@ static void scenario_c7(void)
     /* Shared rule data: rule 0 requires OPERATOR + READ_SENSORS */
     PolicyRule scope_rules[MAX_RULES] = {
         { PATH_STATUS, METHOD_GET, ROLE_OPERATOR, SCOPE_READ_SENSORS },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
-        { DEAD_HASH, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0, 0 },
     };
 
     /* -- Helper: build AccessRequest buffer -- */
@@ -577,10 +573,10 @@ static void scenario_c7(void)
         buf[3] = (uint8_t)(((scope_val) >> 8) & 0xFF); \
         for (int _i = 0; _i < MAX_RULES; _i++) { \
             int _off = 4 + _i * 8; \
-            buf[_off+0] = (uint8_t)((scope_rules[_i].path_hash >>  0) & 0xFF); \
-            buf[_off+1] = (uint8_t)((scope_rules[_i].path_hash >>  8) & 0xFF); \
-            buf[_off+2] = (uint8_t)((scope_rules[_i].path_hash >> 16) & 0xFF); \
-            buf[_off+3] = (uint8_t)((scope_rules[_i].path_hash >> 24) & 0xFF); \
+            buf[_off+0] = (uint8_t)((scope_rules[_i].path_id >>  0) & 0xFF); \
+            buf[_off+1] = (uint8_t)((scope_rules[_i].path_id >>  8) & 0xFF); \
+            buf[_off+2] = (uint8_t)((scope_rules[_i].path_id >> 16) & 0xFF); \
+            buf[_off+3] = (uint8_t)((scope_rules[_i].path_id >> 24) & 0xFF); \
             buf[_off+4] = scope_rules[_i].method; \
             buf[_off+5] = scope_rules[_i].min_role; \
             buf[_off+6] = (uint8_t)((scope_rules[_i].req_scope >> 0) & 0xFF); \
@@ -632,13 +628,13 @@ static void scenario_c7(void)
     if (!accepted) { total_passed++; printf("    PASS: C7.5: NONE role + scope 0x00 -> DENY (role insufficient)\n"); }
     else { printf("    FAIL: C7.5: NONE role + scope 0x00 -> expected DENY got ACCEPT\n"); }
 
-    /* C7.6: Dead rule with scope=0xFF still DENY (path_match fails first) */
-    scope_rules[0] = (PolicyRule){ DEAD_HASH, 0, 0, 0xFF };
+    /* C7.6: inactive rule with scope=0xFF still DENY (path_match fails first) */
+    scope_rules[0] = (PolicyRule){ INACTIVE_PATH_ID, 0, 0, 0xFF };
     BUILD_SCOPE_BUF(ROLE_ADMIN, 0xFFFF, PATH_STATUS, METHOD_GET);
     accepted = RbacPolicyCheckAccessRequest(buf, SCOPE_ACCESS_REQ_SIZE);
     total_tests++;
-    if (!accepted) { total_passed++; printf("    PASS: C7.6: Dead rule with scope=0xFF -> DENY (path mismatch)\n"); }
-    else { printf("    FAIL: C7.6: Dead rule with scope=0xFF -> expected DENY got ACCEPT\n"); }
+    if (!accepted) { total_passed++; printf("    PASS: C7.6: inactive rule with scope=0xFF -> DENY (path mismatch)\n"); }
+    else { printf("    FAIL: C7.6: inactive rule with scope=0xFF -> expected DENY got ACCEPT\n"); }
 
     /* C7.7: Operator(0x03) + rule requires READ|WRITE(0x03) -> ACCEPT */
     scope_rules[0] = (PolicyRule){ PATH_STATUS, METHOD_GET, ROLE_OPERATOR,
@@ -660,9 +656,6 @@ static void scenario_c7(void)
 
     #undef BUILD_SCOPE_BUF
     #undef SCOPE_ACCESS_REQ_SIZE
-    #undef SCOPE_READ_SENSORS
-    #undef SCOPE_WRITE_SENSORS
-    #undef SCOPE_CONFIGURE
 
     printf("\n");
 }
@@ -787,7 +780,7 @@ int main(void)
         /* Write rules at offset 4 */
         for (int i = 0; i < MAX_RULES; i++) {
             int off = 4 + i * 8;
-            uint32_t ph = bench_policy.rules[i].path_hash;
+            uint32_t ph = bench_policy.rules[i].path_id;
             bench_buf[off+0] = (uint8_t)((ph >>  0) & 0xFF);
             bench_buf[off+1] = (uint8_t)((ph >>  8) & 0xFF);
             bench_buf[off+2] = (uint8_t)((ph >> 16) & 0xFF);
@@ -798,7 +791,7 @@ int main(void)
             bench_buf[off+6] = (uint8_t)(rs & 0xFF);
             bench_buf[off+7] = (uint8_t)((rs >> 8) & 0xFF);
         }
-        /* req_path_hash = PATH_STATUS at offset 68 */
+        /* req_path_id = PATH_STATUS at offset 68 */
         uint32_t rph = PATH_STATUS;
         bench_buf[68] = (uint8_t)((rph >>  0) & 0xFF);
         bench_buf[69] = (uint8_t)((rph >>  8) & 0xFF);

@@ -1,5 +1,5 @@
 /*
- * Test harness for F*-verified extract_path_hash
+ * Test harness for F*-verified extract_path_id
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -20,19 +20,19 @@ static int pass = 0, total = 0;
 
 #define TEST(name, input, ilen, method_end, exp_hash, exp_is_root) do { \
     total++; \
-    path_result r = extract_path_hash((uint8_t *)(input), (method_end), (ilen)); \
-    if (r.pr_hash == (exp_hash) && r.pr_is_root == (exp_is_root)) { \
-        printf("  PASS: %s (hash=0x%08x root=%d)\n", (name), r.pr_hash, r.pr_is_root); \
+    path_result r = extract_path_id((uint8_t *)(input), (method_end), (ilen)); \
+    if (r.pr_id == (exp_hash) && r.pr_is_root == (exp_is_root)) { \
+        printf("  PASS: %s (hash=0x%08x root=%d)\n", (name), r.pr_id, r.pr_is_root); \
         pass++; \
     } else { \
         printf("  FAIL: %s (expected hash=0x%08x root=%d, got hash=0x%08x root=%d)\n", \
-               (name), (uint32_t)(exp_hash), (int)(exp_is_root), r.pr_hash, r.pr_is_root); \
+               (name), (uint32_t)(exp_hash), (int)(exp_is_root), r.pr_id, r.pr_is_root); \
     } \
 } while(0)
 
 int main(void)
 {
-    printf("=== extract_path_hash test suite ===\n\n");
+    printf("=== extract_path_id test suite ===\n\n");
 
     /* --- Known endpoints --- */
     /* "GET /api/login HTTP/1.1\r\n" -> method_end=4, header_end=24 */

@@ -7,11 +7,11 @@
  * Buffer layout (43 bytes, little-endian):
  *   [0]      max_rate (u8)
  *   [1..4]   max_body (u32)
- *   [5..10]  Rule 0: path_hash(u32) method(u8) min_role(u8)
+ *   [5..10]  Rule 0: path_id(u32) method(u8) min_role(u8)
  *   [11..16] Rule 1
  *   [17..22] Rule 2
  *   [23..28] Rule 3
- *   [29..34] Request: path_hash(u32) method(u8) auth_state(u8)
+ *   [29..34] Request: path_id(u32) method(u8) auth_state(u8)
  *   [35]     req_rate_count (u8)
  *   [36..39] req_content_length (u32)
  *   [40]     _rate_ok byte
@@ -28,7 +28,7 @@
 #define HASH_STATUS  0xAAAAAAAAu
 #define HASH_POLICY  0xBBBBBBBBu
 #define HASH_UNKNOWN 0xCCCCCCCCu
-#define DEAD_HASH    0xDEADDEADu
+#define INACTIVE_PATH_ID    0xDEADDEADu
 
 #define METHOD_GET  1
 #define METHOD_POST 2
@@ -60,9 +60,9 @@ static void write_u32(uint8_t *buf, int offset, uint32_t val)
 
 /* Helper: write a rule (6 bytes) */
 static void write_rule(uint8_t *buf, int offset,
-                       uint32_t path_hash, uint8_t method, uint8_t min_role)
+                       uint32_t path_id, uint8_t method, uint8_t min_role)
 {
-    write_u32(buf, offset, path_hash);
+    write_u32(buf, offset, path_id);
     buf[offset + 4] = method;
     buf[offset + 5] = min_role;
 }
@@ -83,10 +83,10 @@ static void write_standard_policy(uint8_t *buf)
 
 /* Write request fields */
 static void write_request(uint8_t *buf,
-                          uint32_t path_hash, uint8_t method, uint8_t auth_state,
+                          uint32_t path_id, uint8_t method, uint8_t auth_state,
                           uint8_t rate_count, uint32_t content_length)
 {
-    write_u32(buf, 29, path_hash);
+    write_u32(buf, 29, path_id);
     buf[33] = method;
     buf[34] = auth_state;
     buf[35] = rate_count;

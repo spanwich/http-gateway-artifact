@@ -17,7 +17,7 @@
 #define SUBJECT_ID_MAX   32
 
 /*
- * Fixed header: rate_count(1) + path_hash(4) + method(1) + role(1) + scope(2) +
+ * Fixed header: rate_count(1) + path_id(4) + method(1) + role(1) + scope(2) +
  * subject_id_len(1) + subject_id(32) + token_len(1) + token(128) +
  * body_len(4) = 175 bytes.
  */
@@ -26,7 +26,7 @@
 
 typedef struct __attribute__((packed)) {
     uint8_t  rate_count;                  /* rate limiter counter */
-    uint32_t path_hash;
+    uint32_t path_id;
     uint8_t  method;                     /* 1=GET, 2=POST, 3=PUT */
     uint8_t  role;                       /* Phase 1-2: 0 */
     uint16_t scope;                      /* Phase 1-2: 0 */

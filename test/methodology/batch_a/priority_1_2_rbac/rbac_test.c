@@ -5,7 +5,7 @@
  *   1. RBAC Enforcement (role hierarchy)        — 7 steps
  *   2. Policy Update Changes Access Decisions   — 6 steps
  *   3. Non-Admin Cannot Update Policy           — 2 steps
- *   4. Lockdown Policy (all rules dead)         — 4 steps
+ *   4. Lockdown Policy (all rules inactive)         — 4 steps
  *   5. Role Escalation Prevention               — 4 steps
  *   6. Malformed Policy Rejected                — 3 steps
  */
@@ -83,7 +83,7 @@ static uint32_t build_policy_body(uint8_t *body, uint8_t num_rules,
     body[0] = num_rules;
     for (int i = 0; i < MAX_RULES; i++) {
         int off = 1 + i * 6;
-        write_u32(body, off, rules[i].path_hash);
+        write_u32(body, off, rules[i].path_id);
         body[off + 4] = rules[i].method;
         body[off + 5] = rules[i].min_role;
     }
@@ -180,11 +180,11 @@ static void scenario_2(void)
         { PATH_STATUS, METHOD_GET,  ROLE_ADMIN },    /* was OPERATOR */
         { PATH_LOGOUT, METHOD_POST, ROLE_OPERATOR },  /* unchanged */
         { PATH_POLICY, METHOD_GET,  ROLE_ADMIN },     /* unchanged */
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
     };
     body_len = build_policy_body(body, 3, new_rules);
     r = process_request(&s, &p, PATH_POLICY, METHOD_PUT, body, body_len);
@@ -235,9 +235,9 @@ static void scenario_3(void)
     /* Step 2: PUT /policy (OPERATOR < ADMIN -> DENIED by EverParse) */
     PolicyRule rules[MAX_RULES] = {
         { PATH_STATUS, METHOD_GET, ROLE_NONE },
-        { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
     };
     body_len = build_policy_body(body, 1, rules);
     r = process_request(&s, &p, PATH_POLICY, METHOD_PUT, body, body_len);
@@ -248,7 +248,7 @@ static void scenario_3(void)
 }
 
 /*
- * Scenario 4: Lockdown Policy (All Rules Dead)
+ * Scenario 4: Lockdown Policy (All Rules Inactive)
  * 4 steps
  */
 static void scenario_4(void)
@@ -261,7 +261,7 @@ static void scenario_4(void)
     uint8_t body[128];
     uint32_t body_len;
 
-    printf("=== Scenario 4: Lockdown Policy (All Rules Dead) ===\n");
+    printf("=== Scenario 4: Lockdown Policy (All Rules Inactive) ===\n");
 
     /* Step 1: POST /login as admin */
     body_len = build_login_body(body, "admin", "admin456");
@@ -269,15 +269,15 @@ static void scenario_4(void)
     check_step("POST /login as admin",
                r, RESULT_LOGIN_SUCCESS, s.auth_state, ROLE_ADMIN);
 
-    /* Step 2: PUT /policy — all rules DEAD_HASH */
+    /* Step 2: PUT /policy — all rules INACTIVE_PATH_ID */
     PolicyRule dead_rules[MAX_RULES] = {
-        { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 },
     };
     body_len = build_policy_body(body, 1, dead_rules);
     r = process_request(&s, &p, PATH_POLICY, METHOD_PUT, body, body_len);
-    check_step("PUT /policy (all DEAD_HASH lockdown)",
+    check_step("PUT /policy (all INACTIVE_PATH_ID lockdown)",
                r, RESULT_POLICY_UPDATED, s.auth_state, ROLE_ADMIN);
 
     /* Step 3: GET /status -> DENIED (no rule matches) */
@@ -324,9 +324,9 @@ static void scenario_5(void)
     /* Step 3: PUT /policy (operator tries to upload) */
     PolicyRule rules[MAX_RULES] = {
         { PATH_STATUS, METHOD_GET, ROLE_NONE },
-        { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 },
     };
     body_len = build_policy_body(body, 1, rules);
     r = process_request(&s, &p, PATH_POLICY, METHOD_PUT, body, body_len);
@@ -365,9 +365,9 @@ static void scenario_6(void)
 
     /* Step 2: PUT /policy with num_rules = 0 (invalid: must be >= 1) */
     PolicyRule rules[MAX_RULES] = {
-        { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 },
-        { DEAD_HASH, 0, 0 }, { DEAD_HASH, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 },
+        { INACTIVE_PATH_ID, 0, 0 }, { INACTIVE_PATH_ID, 0, 0 },
     };
     body_len = build_policy_body(body, 0, rules); /* num_rules = 0 -> invalid */
     r = process_request(&s, &p, PATH_POLICY, METHOD_PUT, body, body_len);

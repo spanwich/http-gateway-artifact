@@ -28,7 +28,7 @@ static int pass = 0, total = 0;
 #define SECPARAMS_HEADER_SIZE   175
 #define MAX_INLINE_BODY         1361
 
-/* Sentinel path hash constants */
+/* Sentinel path id constants */
 #define PATH_LOGIN    0x11111111u
 #define PATH_LOGOUT   0x22222222u
 #define PATH_STATUS   0x33333333u

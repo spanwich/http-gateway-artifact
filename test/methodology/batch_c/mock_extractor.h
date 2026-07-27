@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 typedef struct {
-    uint32_t       path_hash;
+    uint32_t       path_id;
     uint8_t        method;           /* 1=GET, 2=POST, 3=PUT */
     uint32_t       content_length;
     const uint8_t *body;
@@ -20,7 +20,7 @@ typedef struct {
 } MockHTTPRequest;
 
 typedef struct {
-    uint32_t       path_hash;
+    uint32_t       path_id;
     uint8_t        method;
     uint32_t       content_length;
     const uint8_t *body;             /* Points into original request */

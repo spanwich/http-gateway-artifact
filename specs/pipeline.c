@@ -26,9 +26,9 @@ static const Credential credentials[] = {
 
 /*
  * Buffer layout constants (must match RbacPolicy.3d struct layouts)
- * Phase 5: rules are 8 bytes (path_hash:4 + method:1 + min_role:1 + req_scope:2)
+ * Phase 5: rules are 8 bytes (path_id:4 + method:1 + min_role:1 + req_scope:2)
  */
-#define LOGIN_HEADER_SIZE 8   /* auth_state + rate_count + path_hash + method + _check */
+#define LOGIN_HEADER_SIZE 8   /* auth_state + rate_count + path_id + method + _check */
 #define POLICY_BLOB_SIZE  70  /* 3 + 64 + 3 */
 #define ACCESS_REQ_SIZE   75  /* 4 + 64 + 5 + 2 */
 
@@ -60,7 +60,7 @@ static void write_u16(uint8_t *buf, int offset, uint16_t val)
 /* Write a policy rule (8 bytes) at offset */
 static void write_rule(uint8_t *buf, int offset, const PolicyRule *r)
 {
-    write_u32(buf, offset, r->path_hash);
+    write_u32(buf, offset, r->path_id);
     buf[offset + 4] = r->method;
     buf[offset + 5] = r->min_role;
     write_u16(buf, offset + 6, r->req_scope);
@@ -87,9 +87,9 @@ void policy_init_default(Policy *p)
     /* Rule 2: GET /policy requires ADMIN, no scope */
     p->rules[2] = (PolicyRule){ PATH_POLICY, METHOD_GET, ROLE_ADMIN, 0x0000 };
 
-    /* Rules 3-7: unused (DEAD_HASH) */
+    /* Rules 3-7: unused (INACTIVE_PATH_ID) */
     for (int i = 3; i < MAX_RULES; i++) {
-        p->rules[i] = (PolicyRule){ DEAD_HASH, 0, 0, 0x0000 };
+        p->rules[i] = (PolicyRule){ INACTIVE_PATH_ID, 0, 0, 0x0000 };
     }
 }
 
@@ -198,7 +198,7 @@ static RequestResult handle_policy_update(SessionEntry *se, Policy *p,
     p->num_rules = num_rules;
     for (int i = 0; i < MAX_RULES; i++) {
         int off = 1 + i * 8; /* offset in body */
-        p->rules[i].path_hash =
+        p->rules[i].path_id =
             (uint32_t)body[off + 0] |
             ((uint32_t)body[off + 1] << 8) |
             ((uint32_t)body[off + 2] << 16) |
@@ -217,7 +217,7 @@ static RequestResult handle_policy_update(SessionEntry *se, Policy *p,
  * Process general access request (not login, not policy PUT)
  *
  * Phase 5 AccessRequest layout:
- *   [auth_state:1][rate_count:1][auth_scope:2][rules:64][path_hash:4][method:1]
+ *   [auth_state:1][rate_count:1][auth_scope:2][rules:64][path_id:4][method:1]
  *   [_rate_ok:1][_access_ok:1]
  *
  * Standalone test uses auth_scope=0xFFFF (all scopes granted) since
@@ -226,7 +226,7 @@ static RequestResult handle_policy_update(SessionEntry *se, Policy *p,
 static RequestResult handle_access_request(SessionEntry *se, const Policy *p,
                                            const SecurityParams *params)
 {
-    uint32_t path_hash = params->path_hash;
+    uint32_t path_id = params->path_id;
     uint8_t method = params->method;
 
     /* Build AccessRequest buffer */
@@ -237,7 +237,7 @@ static RequestResult handle_access_request(SessionEntry *se, const Policy *p,
     buf[1] = se->rate_count;
     write_u16(buf, 2, 0xFFFF);  /* auth_scope: all scopes (standalone) */
     write_rules(buf, 4, p);     /* rules at offset 4 */
-    write_u32(buf, 68, path_hash);
+    write_u32(buf, 68, path_id);
     buf[72] = method;
 
     BOOLEAN accepted = RbacPolicyCheckAccessRequest(buf, ACCESS_REQ_SIZE);
@@ -249,12 +249,12 @@ static RequestResult handle_access_request(SessionEntry *se, const Policy *p,
     }
 
     /* Dispatch to endpoint */
-    if (path_hash == PATH_LOGOUT && method == METHOD_POST) {
+    if (path_id == PATH_LOGOUT && method == METHOD_POST) {
         se->auth_state = ROLE_NONE;
         return RESULT_LOGOUT_SUCCESS;
-    } else if (path_hash == PATH_STATUS && method == METHOD_GET) {
+    } else if (path_id == PATH_STATUS && method == METHOD_GET) {
         return RESULT_STATUS_OK;
-    } else if (path_hash == PATH_POLICY && method == METHOD_GET) {
+    } else if (path_id == PATH_POLICY && method == METHOD_GET) {
         return RESULT_POLICY_READ_OK;
     }
 
@@ -278,11 +278,11 @@ RequestResult pipeline_process(SessionTable *sessions, Policy *policy,
     }
 
     /* Step 3: Dispatch */
-    if (params.path_hash == PATH_LOGIN && params.method == METHOD_POST) {
+    if (params.path_id == PATH_LOGIN && params.method == METHOD_POST) {
         return handle_login(se, &params);
     }
 
-    if (params.path_hash == PATH_POLICY && params.method == METHOD_PUT) {
+    if (params.path_id == PATH_POLICY && params.method == METHOD_PUT) {
         return handle_policy_update(se, policy, &params);
     }
 

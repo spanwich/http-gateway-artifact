@@ -15,7 +15,7 @@
 
 /* Constants */
 #define HASH_STATUS  0xAAAAAAAAu
-#define DEAD_HASH    0xDEADDEADu
+#define INACTIVE_PATH_ID    0xDEADDEADu
 
 #define METHOD_GET  1
 
@@ -45,9 +45,9 @@ static void write_u32(uint8_t *buf, int offset, uint32_t val)
 
 /* Helper: write a rule (6 bytes) */
 static void write_rule(uint8_t *buf, int offset,
-                       uint32_t path_hash, uint8_t method, uint8_t min_role)
+                       uint32_t path_id, uint8_t method, uint8_t min_role)
 {
-    write_u32(buf, offset, path_hash);
+    write_u32(buf, offset, path_id);
     buf[offset + 4] = method;
     buf[offset + 5] = min_role;
 }
@@ -55,7 +55,7 @@ static void write_rule(uint8_t *buf, int offset,
 /* Write the fixed request: OPERATOR GET /status, rate=5, size=100 */
 static void write_fixed_request(uint8_t *buf)
 {
-    write_u32(buf, 29, HASH_STATUS);     /* req_path_hash */
+    write_u32(buf, 29, HASH_STATUS);     /* req_path_id */
     buf[33] = METHOD_GET;                 /* req_method */
     buf[34] = ROLE_OPERATOR;              /* req_auth_state */
     buf[35] = 5;                          /* req_rate_count */
@@ -94,9 +94,9 @@ int main(void)
     buf[0] = 10;                        /* max_rate */
     write_u32(buf, 1, 4096);            /* max_body */
     write_rule(buf,  5, HASH_STATUS, METHOD_GET, ROLE_ADMIN);  /* min_role=ADMIN */
-    write_rule(buf, 11, DEAD_HASH, METHOD_GET, ROLE_NONE);
-    write_rule(buf, 17, DEAD_HASH, METHOD_GET, ROLE_NONE);
-    write_rule(buf, 23, DEAD_HASH, METHOD_GET, ROLE_NONE);
+    write_rule(buf, 11, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
+    write_rule(buf, 17, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
+    write_rule(buf, 23, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
     write_fixed_request(buf);
     total++; passed += run_test("Policy A (restrictive): min_role=ADMIN → REJECT", buf, BUF_SIZE, 0);
 
@@ -108,25 +108,25 @@ int main(void)
     buf[0] = 10;
     write_u32(buf, 1, 4096);
     write_rule(buf,  5, HASH_STATUS, METHOD_GET, ROLE_OPERATOR);  /* min_role=OPERATOR */
-    write_rule(buf, 11, DEAD_HASH, METHOD_GET, ROLE_NONE);
-    write_rule(buf, 17, DEAD_HASH, METHOD_GET, ROLE_NONE);
-    write_rule(buf, 23, DEAD_HASH, METHOD_GET, ROLE_NONE);
+    write_rule(buf, 11, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
+    write_rule(buf, 17, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
+    write_rule(buf, 23, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
     write_fixed_request(buf);
     total++; passed += run_test("Policy B (permissive): min_role=OPERATOR → ACCEPT", buf, BUF_SIZE, 1);
 
     /*
-     * Policy C (lockdown): all rules use DEAD_HASH (no request can match)
+     * Policy C (lockdown): all rules use INACTIVE_PATH_ID (no request can match)
      * Deny-by-default → REJECT
      */
     memset(buf, 0, BUF_SIZE);
     buf[0] = 10;
     write_u32(buf, 1, 4096);
-    write_rule(buf,  5, DEAD_HASH, METHOD_GET, ROLE_NONE);
-    write_rule(buf, 11, DEAD_HASH, METHOD_GET, ROLE_NONE);
-    write_rule(buf, 17, DEAD_HASH, METHOD_GET, ROLE_NONE);
-    write_rule(buf, 23, DEAD_HASH, METHOD_GET, ROLE_NONE);
+    write_rule(buf,  5, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
+    write_rule(buf, 11, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
+    write_rule(buf, 17, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
+    write_rule(buf, 23, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
     write_fixed_request(buf);
-    total++; passed += run_test("Policy C (lockdown): all DEAD_HASH → REJECT", buf, BUF_SIZE, 0);
+    total++; passed += run_test("Policy C (lockdown): all INACTIVE_PATH_ID → REJECT", buf, BUF_SIZE, 0);
 
     printf("\nResults: %d/%d passed\n", passed, total);
     printf("\nConclusion: Same verified validator binary, different policy data,\n");

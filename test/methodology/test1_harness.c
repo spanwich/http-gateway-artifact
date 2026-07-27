@@ -5,11 +5,11 @@
  * Parse succeeds = ACCEPT, parse fails = DENY.
  *
  * Buffer layout (31 bytes, little-endian):
- *   [0..5]   Rule 0: path_hash(u32) method(u8) min_role(u8)
+ *   [0..5]   Rule 0: path_id(u32) method(u8) min_role(u8)
  *   [6..11]  Rule 1
  *   [12..17] Rule 2
  *   [18..23] Rule 3
- *   [24..29] Request: path_hash(u32) method(u8) auth_state(u8)
+ *   [24..29] Request: path_id(u32) method(u8) auth_state(u8)
  *   [30]     _check byte (value irrelevant, constraint validated)
  */
 
@@ -22,7 +22,7 @@
 #define HASH_STATUS  0xAAAAAAAAu
 #define HASH_POLICY  0xBBBBBBBBu
 #define HASH_UNKNOWN 0xCCCCCCCCu
-#define DEAD_HASH    0xDEADDEADu
+#define INACTIVE_PATH_ID    0xDEADDEADu
 
 #define METHOD_GET  1
 #define METHOD_POST 2
@@ -48,21 +48,21 @@ void Test1DisjunctionEverParseError(
 
 /* Helper: write a rule at the given offset in little-endian */
 static void write_rule(uint8_t *buf, int offset,
-                       uint32_t path_hash, uint8_t method, uint8_t min_role)
+                       uint32_t path_id, uint8_t method, uint8_t min_role)
 {
-    buf[offset + 0] = (path_hash >>  0) & 0xFF;
-    buf[offset + 1] = (path_hash >>  8) & 0xFF;
-    buf[offset + 2] = (path_hash >> 16) & 0xFF;
-    buf[offset + 3] = (path_hash >> 24) & 0xFF;
+    buf[offset + 0] = (path_id >>  0) & 0xFF;
+    buf[offset + 1] = (path_id >>  8) & 0xFF;
+    buf[offset + 2] = (path_id >> 16) & 0xFF;
+    buf[offset + 3] = (path_id >> 24) & 0xFF;
     buf[offset + 4] = method;
     buf[offset + 5] = min_role;
 }
 
 /* Helper: write the request at offset 24 */
 static void write_request(uint8_t *buf,
-                          uint32_t path_hash, uint8_t method, uint8_t auth_state)
+                          uint32_t path_id, uint8_t method, uint8_t auth_state)
 {
-    write_rule(buf, 24, path_hash, method, auth_state);
+    write_rule(buf, 24, path_id, method, auth_state);
 }
 
 /* Standard policy: 4 rules */
@@ -78,13 +78,13 @@ static void write_standard_policy(uint8_t *buf)
     write_rule(buf, 18, HASH_POLICY, METHOD_PUT, ROLE_ADMIN);
 }
 
-/* Dead policy: all rules use DEAD_HASH (no request can match) */
+/* Inactive policy: all rules use INACTIVE_PATH_ID (no request can match) */
 static void write_dead_policy(uint8_t *buf)
 {
-    write_rule(buf,  0, DEAD_HASH, METHOD_GET, ROLE_NONE);
-    write_rule(buf,  6, DEAD_HASH, METHOD_GET, ROLE_NONE);
-    write_rule(buf, 12, DEAD_HASH, METHOD_GET, ROLE_NONE);
-    write_rule(buf, 18, DEAD_HASH, METHOD_GET, ROLE_NONE);
+    write_rule(buf,  0, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
+    write_rule(buf,  6, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
+    write_rule(buf, 12, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
+    write_rule(buf, 18, INACTIVE_PATH_ID, METHOD_GET, ROLE_NONE);
 }
 
 static int run_test(const char *name, uint8_t *buf, uint32_t len, int expect_accept)
@@ -137,12 +137,12 @@ int main(void)
     buf[30] = 0x00;
     total++; passed += run_test("Test D: ADMIN POST /status (rule 1 match)", buf, BUF_SIZE, 1);
 
-    /* Test E: all-DEAD-rules deny-by-default → REJECT */
+    /* Test E: all-inactive-rules deny-by-default → REJECT */
     memset(buf, 0, BUF_SIZE);
     write_dead_policy(buf);
     write_request(buf, HASH_STATUS, METHOD_GET, ROLE_ADMIN);
     buf[30] = 0x00;
-    total++; passed += run_test("Test E: all-dead rules (deny-by-default)", buf, BUF_SIZE, 0);
+    total++; passed += run_test("Test E: all-inactive rules (deny-by-default)", buf, BUF_SIZE, 0);
 
     printf("\nResults: %d/%d passed\n", passed, total);
     return (passed == total) ? 0 : 1;

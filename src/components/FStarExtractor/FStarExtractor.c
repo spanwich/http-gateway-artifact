@@ -29,7 +29,7 @@
 #include "IPC_Extract.h"
 #include "security_params_wire.h"
 #include "gate_response_wire.h"
-#include "path_hashes.h"
+#include "path_ids.h"
 #include "auth_wire.h"
 #include "http_response.h"
 #include "dashboard_html.h"
@@ -337,22 +337,22 @@ int run(void)
 
             if (res == EXTRACT_OK) {
                 SecurityParamsWire *params = (SecurityParamsWire *)wire_buf;
-                uint32_t path_hash = params->path_hash;
+                uint32_t path_id = params->path_id;
                 uint8_t method = params->method;
 
                 /* ---- Auth routing (Phase 4) ---- */
 
-                if (path_hash == 0) {
+                if (path_id == 0) {
                     /* Unknown endpoint -> 404 */
                     write_to_ring(http_tx, (const uint8_t *)RESP_404_BODY,
                                  (uint32_t)(sizeof(RESP_404_BODY) - 1));
                     to_proxy_ready_emit();
 
-                } else if (path_hash == PATH_LOGIN && method == METHOD_POST) {
+                } else if (path_id == PATH_LOGIN && method == METHOD_POST) {
                     /* Login: Authenticator handles directly, no PolicyGate */
                     handle_login(http_tx, params);
 
-                } else if (path_hash == PATH_LOGOUT) {
+                } else if (path_id == PATH_LOGOUT) {
                     /* Logout: stateless (client discards token) */
                     uint8_t resp_buf[512];
                     uint32_t resp_len = 0;
@@ -384,7 +384,7 @@ int run(void)
                          * Recompute wire_len since we modified params. */
                         wire_len = secparams_wire_size(params);
                         printf("[FStarExtractor] -> PolicyGate path=0x%08lx role=%u\n",
-                               (unsigned long)path_hash, params->role);
+                               (unsigned long)path_id, params->role);
                         write_to_ring(gate_tx, wire_buf, wire_len);
                         to_gate_ready_emit();
                     }

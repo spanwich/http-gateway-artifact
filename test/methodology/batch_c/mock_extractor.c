@@ -17,8 +17,8 @@ ExtractionResult mock_extract(const MockHTTPRequest *req, SecurityParams *out)
         return EXTRACT_MALFORMED;
     }
 
-    /* Check 2: path_hash != 0 */
-    if (req->path_hash == 0) {
+    /* Check 2: path_id != 0 */
+    if (req->path_id == 0) {
         return EXTRACT_MALFORMED;
     }
 
@@ -33,15 +33,15 @@ ExtractionResult mock_extract(const MockHTTPRequest *req, SecurityParams *out)
     }
 
     /* Check 5: login and policy-update require non-NULL body */
-    if (req->path_hash == PATH_LOGIN && req->method == METHOD_POST) {
+    if (req->path_id == PATH_LOGIN && req->method == METHOD_POST) {
         if (req->body == NULL) return EXTRACT_MALFORMED;
     }
-    if (req->path_hash == PATH_POLICY && req->method == METHOD_PUT) {
+    if (req->path_id == PATH_POLICY && req->method == METHOD_PUT) {
         if (req->body == NULL) return EXTRACT_MALFORMED;
     }
 
     /* Extract */
-    out->path_hash = req->path_hash;
+    out->path_id = req->path_id;
     out->method = req->method;
     out->content_length = req->content_length;
     out->body = req->body;

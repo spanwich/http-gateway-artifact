@@ -19,7 +19,7 @@
 #define METHOD_GET  1
 #define METHOD_POST 2
 
-/* Path hashes (must match MealyAuth.3d) */
+/* Path ids (must match MealyAuth.3d) */
 #define PATH_LOGIN  0x11111111u
 #define PATH_LOGOUT 0x22222222u
 #define PATH_STATUS 0x33333333u
@@ -53,15 +53,15 @@ void session_reset(Session *s);
 /*
  * Process a simple request (no body): logout or status.
  *
- * Constructs [auth_state, rate_count, path_hash, method, _check]
+ * Constructs [auth_state, rate_count, path_id, method, _check]
  * buffer and calls the appropriate EverParse validator.
  */
-RequestResult process_simple_request(Session *s, uint32_t path_hash, uint8_t method);
+RequestResult process_simple_request(Session *s, uint32_t path_id, uint8_t method);
 
 /*
  * Process a login request with credentials.
  *
- * Constructs [auth_state, rate_count, path_hash, method, _check,
+ * Constructs [auth_state, rate_count, path_id, method, _check,
  *             username_len, username, password_len, password]
  * buffer and calls EverParse LoginRequest validator.
  *

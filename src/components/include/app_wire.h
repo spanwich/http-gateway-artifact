@@ -16,14 +16,14 @@
 
 /*
  * AppRequest header:
- *   conn_id(1) + path_hash(4) + method(1) + role(1) + scope(2) +
+ *   conn_id(1) + path_id(4) + method(1) + role(1) + scope(2) +
  *   subject_id_len(1) + subject_id(32) + body_len(4) = 46 bytes
  */
 #define APP_REQUEST_HEADER_SIZE 46
 
 typedef struct __attribute__((packed)) {
     uint8_t  conn_id;
-    uint32_t path_hash;
+    uint32_t path_id;
     uint8_t  method;
     uint8_t  role;
     uint16_t scope;

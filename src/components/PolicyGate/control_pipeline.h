@@ -15,7 +15,7 @@
 #include "security_params_wire.h"
 #include "gate_response_wire.h"
 #include "app_wire.h"
-#include "path_hashes.h"
+#include "path_ids.h"
 
 /* Limits (must match RbacPolicy.3d) */
 #define MAX_RATE      50
@@ -23,7 +23,7 @@
 
 /* A single policy rule */
 typedef struct {
-    uint32_t path_hash;
+    uint32_t path_id;
     uint8_t  method;
     uint8_t  min_role;
     uint16_t req_scope;

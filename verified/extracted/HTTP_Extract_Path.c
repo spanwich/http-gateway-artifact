@@ -150,32 +150,32 @@ bool is_path_policy(uint8_t *buf, uint32_t ps)
     && b10 == 0x79U;
 }
 
-path_result extract_path_hash(uint8_t *buf, uint32_t method_end, uint32_t header_end)
+path_result extract_path_id(uint8_t *buf, uint32_t method_end, uint32_t header_end)
 {
   uint32_t path_start = method_end;
   uint32_t path_end = find_path_end(buf, header_end, path_start);
   uint32_t path_len = path_end - path_start;
   if (!check_no_traversal(buf, path_start, path_end, path_start))
-    return ((path_result){ .pr_hash = 0U, .pr_is_root = false });
+    return ((path_result){ .pr_id = 0U, .pr_is_root = false });
   else if (!check_no_null(buf, path_end, path_start))
-    return ((path_result){ .pr_hash = 0U, .pr_is_root = false });
+    return ((path_result){ .pr_id = 0U, .pr_is_root = false });
   else if (is_root_path(buf, path_start, path_end))
-    return ((path_result){ .pr_hash = 0U, .pr_is_root = true });
+    return ((path_result){ .pr_id = 0U, .pr_is_root = true });
   else if (path_len == 10U)
     if (is_path_login(buf, path_start))
-      return ((path_result){ .pr_hash = 0x11111111U, .pr_is_root = false });
+      return ((path_result){ .pr_id = 0x11111111U, .pr_is_root = false });
     else
-      return ((path_result){ .pr_hash = 0U, .pr_is_root = false });
+      return ((path_result){ .pr_id = 0U, .pr_is_root = false });
   else if (path_len == 11U)
     if (is_path_logout(buf, path_start))
-      return ((path_result){ .pr_hash = 0x22222222U, .pr_is_root = false });
+      return ((path_result){ .pr_id = 0x22222222U, .pr_is_root = false });
     else if (is_path_status(buf, path_start))
-      return ((path_result){ .pr_hash = 0x33333333U, .pr_is_root = false });
+      return ((path_result){ .pr_id = 0x33333333U, .pr_is_root = false });
     else if (is_path_policy(buf, path_start))
-      return ((path_result){ .pr_hash = 0x44444444U, .pr_is_root = false });
+      return ((path_result){ .pr_id = 0x44444444U, .pr_is_root = false });
     else
-      return ((path_result){ .pr_hash = 0U, .pr_is_root = false });
+      return ((path_result){ .pr_id = 0U, .pr_is_root = false });
   else
-    return ((path_result){ .pr_hash = 0U, .pr_is_root = false });
+    return ((path_result){ .pr_id = 0U, .pr_is_root = false });
 }
 

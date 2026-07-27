@@ -11,7 +11,7 @@ extern "C" {
 
 #define SCALETEST4____MAX_RATE (50U)
 
-#define SCALETEST4____DEAD_HASH (0xDEADDEADU)
+#define SCALETEST4____INACTIVE_PATH_ID (0xDEADDEADU)
 
 uint64_t
 ScaleTest4ValidateScaleTest4(
